@@ -1,18 +1,14 @@
 
 import { Field, Int, ObjectType } from "type-graphql";
-import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { Updoot } from "./Updoot";
-import { User } from "./User";
+import { BaseEntity, Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import {Project} from './Project'
 
 @ObjectType()
 @Entity()
-export class Post extends BaseEntity {
+export class Module extends BaseEntity {
   @Field(() => Int)
   @PrimaryGeneratedColumn()
   id!: number;
-
-  @Field(() => Int,{nullable:true})
-  voteStatus:number | null; // 1 or -1 or null
 
   @Field()
   @Column()
@@ -22,21 +18,11 @@ export class Post extends BaseEntity {
   @Column({type:"longtext"})
   text!: string;
 
-  @Field()
-  @Column({type:"int",default:0})
-  points!: number;
+  @Field(()=> String)
+  fiedls:string;
 
-  @Field()
-  @Column()
-  creatorId:number;
-
-  @Field()
-  @ManyToOne(() => User,user =>user.posts)
-  creator:User
-
- 
-  @OneToMany(() =>Updoot,(updoot) =>updoot.post)
-  updoots:Updoot[]
+  @OneToMany(() =>Project,project =>project.module)
+  projects:Project[]
 
   @Field(()=> String)
   @CreateDateColumn({type:'timestamp',length:''})
@@ -45,8 +31,5 @@ export class Post extends BaseEntity {
   @Field(()=> String)
   @UpdateDateColumn({type:'timestamp',length:''})
   updatedAt = new Date();
-
- 
-
  
 }

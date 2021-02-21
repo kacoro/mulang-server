@@ -5,7 +5,7 @@ import { isAuth } from "../middleware/isAuth";
 import fs from 'fs'
 import path from 'path'
 import { GraphQLUpload, FileUpload } from 'graphql-upload'
-// import { GraphQLError } from "graphql";
+import { Resource } from "../entities/Resource";
 
 function generateRandomString(length: number) {
     var result = ''
@@ -32,9 +32,6 @@ class FileResponse {
     error?: uploadError | null
 }
 
-
-
-
 @Resolver()
 export class UploadResolver {
 
@@ -42,14 +39,15 @@ export class UploadResolver {
     @UseMiddleware(isAuth)
     async uploadFile(
         @Arg("file", () => GraphQLUpload) file: FileUpload,
-        @Ctx() { }: MyContext
+        @Ctx() {req }: MyContext
     ): Promise<FileResponse> {
 
 
         try {
-            const { createReadStream, filename } = await file; //createReadStream,filename,mimetype,encoding
-            
-            const { ext } = path.parse(filename)
+            const { createReadStream, filename,mimetype } = await file; //createReadStream,filename,mimetype,encoding
+            console.log(filename,mimetype)
+            console.log(path.parse(filename))
+            const { name,ext } = path.parse(filename)
             const randomName = generateRandomString(12) + ext
            
             const pathName = path.join(__dirname, `../../public/upload/images/${randomName}`)
@@ -76,14 +74,15 @@ export class UploadResolver {
                     }
                 };
             } else{
+                let url = '/upload/images/' + randomName
+                await Resource.create({ url:url,title:name,ext:ext,filename:randomName,mimetype:mimetype, creatorId: req.session.userId }).save()
                 return {
-                    url: '/upload/images/' + randomName,
-
+                    url: url,
                 };
             }
 
         } catch (error) {
-            console.log("catch error:")
+            console.log("catch error:",error)
              if(error.message && error.message.indexOf('size limit')){
                  return {
                     error:{

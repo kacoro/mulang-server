@@ -5,9 +5,13 @@ import { isAuth } from "../middleware/isAuth";
 import { getConnection } from "typeorm";
 
 @InputType()
-class PostInput {
+class ResourceInput {
     @Field()
     title: string
+
+    @Field()
+    url:string
+    
     @Field()
     text: string
 }
@@ -30,7 +34,7 @@ export class ResourceResolver {
     @Query(() => Resource) // ()=> [Post]
     async resources(
         @Arg('limit', () => Int) limit: number,
-        @Arg('cursor', () => String, { nullable: true }) cursor: string | null,
+        @Arg('cursor', () => Int, { nullable: true }) cursor: number | null,
         @Ctx() { req }: MyContext
     ): Promise<Resource[]> { //: Promise<Post[]>
         // 20->21
@@ -40,21 +44,19 @@ export class ResourceResolver {
         const replacements: any[] = [realLimitPlusOne, req.session.userId]
 
         if (cursor) {
-            const parseCurrsor = new Date(parseInt(cursor))
+            const parseCurrsor = cursor
             replacements.push(parseCurrsor)
         }
 
         const qb = getConnection().getRepository(Resource).createQueryBuilder("p")
             // .innerJoinAndSelect("p.creator", "u", 'u.id = p.creatorId')
             .orderBy("p.createdAt", "DESC").take(realLimitPlusOne)
-        // if (req.session.userId) {
-        //     qb.leftJoinAndSelect("p.updoots", "up", 'up.postId = p.id and userId =' + req.session.userId)
-        // }
 
         if (cursor) {
-            qb.where("p.createdAt < :cursor", {
-                cursor: new Date(parseInt(cursor))
-            })
+            qb.skip(cursor)
+            // qb.where("p.createdAt < :cursor", {
+            //     cursor: new Date(parseInt(cursor))
+            // })
         }
         const res = await qb.getMany()
 
@@ -62,7 +64,7 @@ export class ResourceResolver {
     }
 
     @Query(() => Resource, { nullable: true })
-    post(
+    resource(
         @Arg('id', () => Int) id: number,
     ): Promise<Resource | undefined> {
         // return Post.findOne(id, { relations: ["creator"] });
@@ -72,11 +74,12 @@ export class ResourceResolver {
     @Mutation(() => Resource)
     @UseMiddleware(isAuth)
     async createResource(
-        @Arg("input") input: PostInput,
+        @Arg("input") input: ResourceInput,
         @Ctx() { req }: MyContext
     ): Promise<Resource> {
         return await Resource.create({ ...input, creatorId: req.session.userId }).save()
     }
+    
 
     @Mutation(() => Resource, { nullable: true })
     @UseMiddleware(isAuth)

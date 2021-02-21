@@ -11,20 +11,36 @@ export class Resource extends BaseEntity {
   id!: number;
 
   @Field()
-  @Column()
-  title!: string;
+  @Column({nullable:true})
+  title: string;
+
+  @Field()
+  @Column({nullable:true})
+  type: string;
+
+  @Field()
+  @Column({nullable:true})
+  mimetype: string;
+
+  @Field()
+  @Column({nullable:true})
+  filename: string;
+
+  @Field()
+  @Column({nullable:true})
+  ext: string;
 
   @Field()
   @Column()
-  type!: string;
+  url!: string;
 
   @Field()
   @Column({type:"int",default:0})
   status!: number;
 
   @Field()
-  @Column({type:"longtext"})
-  note!: string;
+  @Column({nullable:true,type:"longtext"})
+  note: string;
 
   @Field()
   @Column()

@@ -1,12 +1,11 @@
 
 import { Field, Int, ObjectType } from "type-graphql";
-import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { Updoot } from "./Updoot";
-import { User } from "./User";
+import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Module } from "./Module";
 
 @ObjectType()
 @Entity()
-export class Post extends BaseEntity {
+export class Project extends BaseEntity {
   @Field(() => Int)
   @PrimaryGeneratedColumn()
   id!: number;
@@ -20,23 +19,14 @@ export class Post extends BaseEntity {
 
   @Field()
   @Column({type:"longtext"})
-  text!: string;
-
-  @Field()
-  @Column({type:"int",default:0})
-  points!: number;
+  note!: string; //模块说明
 
   @Field()
   @Column()
-  creatorId:number;
+  moduleId:number;
 
-  @Field()
-  @ManyToOne(() => User,user =>user.posts)
-  creator:User
-
- 
-  @OneToMany(() =>Updoot,(updoot) =>updoot.post)
-  updoots:Updoot[]
+  @ManyToOne(() => Module,(module) =>module.projects)
+  module:Module
 
   @Field(()=> String)
   @CreateDateColumn({type:'timestamp',length:''})
@@ -45,8 +35,5 @@ export class Post extends BaseEntity {
   @Field(()=> String)
   @UpdateDateColumn({type:'timestamp',length:''})
   updatedAt = new Date();
-
- 
-
  
 }
