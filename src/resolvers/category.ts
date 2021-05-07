@@ -49,17 +49,18 @@ export class CateResolver {
                 return cate
             }
         }
-
         return null;
     }
     @Mutation(() => Boolean)
-    async deletePost(
+    async deleteCategory(
         @Arg("id", () => Int) id: number,
         @Ctx() {  }: MyContext
     ): Promise<boolean> {
         await Category.delete({ id})
         return true;
     }
+
+
 
     @Query(() => [Category])
     async categorys(

@@ -14,7 +14,7 @@ import {  BaseEntity, Column, Entity, PrimaryGeneratedColumn, Tree, TreeChildren
 export class Category extends BaseEntity {
   @Field(() => Int)
   @PrimaryGeneratedColumn()
-  id: number
+  id!: number
 
   @Field()
   @Column()
