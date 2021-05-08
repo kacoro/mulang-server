@@ -8,18 +8,18 @@ import Busboy from 'busboy'
  * @param  {string} dirname 目录绝对地址
  * @return {boolean}        创建目录结果
  */
-function mkdirsSync( dirname:string ) {
-  if (fs.existsSync( dirname )) {
-    return true
-  } else {
-    if (mkdirsSync( path.dirname(dirname)) ) {
-      fs.mkdirSync( dirname )
-      return true
-    }else{
-        return false
-    }
-  }
-}
+// function mkdirsSync( dirname:string ) {
+//   if (fs.existsSync( dirname )) {
+//     return true
+//   } else {
+//     if (mkdirsSync( path.dirname(dirname)) ) {
+//       fs.mkdirSync( dirname )
+//       return true
+//     }else{
+//         return false
+//     }
+//   }
+// }
 
 /**
  * 获取上传文件的后缀名
@@ -39,13 +39,13 @@ function getSuffixName( fileName:string ) {
  */
 function uploadFile( ctx: { req: any; res: any; host: any; }, options: { fileType: string; path: string; }) {
   let req = ctx.req
-  let res = ctx.res
+  // let res = ctx.res
   let busboy = new Busboy({headers: req.headers})
 
   // 获取类型
   let fileType = options.fileType || 'common'
   let filePath = path.join( options.path,  fileType)
-  let mkdirResult = mkdirsSync( filePath )
+  // let mkdirResult = mkdirsSync( filePath )
   
   interface resultType {
     success: Boolean,

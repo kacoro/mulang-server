@@ -28,8 +28,26 @@ yarn build
 yarn start
 ```
 
-## How to deploy
+## How to deploy by docker-compose
 
 ```
 docker-compose up -d --build
 ```
+
+or without api env
+```
+docker-compose -f docker-compose-env.yml up -d
+```
+
+stop
+```
+docker-compose -f docker-compose-env.yml stop
+```
+
+stop and delete
+```
+docker-compose -f docker-compose-env.yml down
+```
+
+
+
