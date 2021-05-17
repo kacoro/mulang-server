@@ -8,6 +8,7 @@ import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
 import {CateResolver} from './resolvers/category'
+import {ModuleResolver} from './resolvers/module';
 import Redis from 'ioredis';
 import session from 'express-session';
 import connectRedis from 'connect-redis'
@@ -59,7 +60,7 @@ const main = async () => {
     
     const apolloServer = new ApolloServer({
         schema: await buildSchema({
-            resolvers: [HelloResolver, PostResolver, UserResolver,UploadResolver,CateResolver],
+            resolvers: [HelloResolver, PostResolver, UserResolver,UploadResolver,CateResolver,ModuleResolver],
             validate: false
         }),
         context: ({ req, res }): MyContext => ({ req, res, redis,loaders:entitieLoaders }),

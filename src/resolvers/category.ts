@@ -30,15 +30,14 @@ export class CateResolver {
 
     @Mutation(()=>Category, { nullable: true })
     async updateCategory(
-        @Arg('id') id:number,
+        @Arg('id', () => Int, { nullable: true }) id: number,
         @Arg("name") name: string,
-        @Arg("identity",()=>String,{nullable:true}) identity: string,
+        @Arg('identity',()=> String,{nullable:true}) identity:string |null
 
     ){
         let condition = { name} //管理员不需要过滤
         if(identity){
             condition = Object.assign(condition, { identity })
-
         }
         const result = await Category.update({
             id,

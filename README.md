@@ -49,5 +49,7 @@ stop and delete
 docker-compose -f docker-compose-env.yml down
 ```
 
-
+```
+pm2 start npm --name server -- start
+```
 
