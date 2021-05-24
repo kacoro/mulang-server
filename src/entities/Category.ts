@@ -36,5 +36,6 @@ export class Category extends BaseEntity {
   @Column({default:0})
   status: number;
 
+    
 
 }

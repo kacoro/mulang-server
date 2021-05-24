@@ -15,15 +15,16 @@ export class Project extends BaseEntity {
   @Column( {comment:'名称'})  
   title!: string;
 
-  @Field()
-  @Column({comment:"标识"}) 
+  @Field({})
+  @Column({comment:"标识",unique:true}) 
   identifier:string
 
   @Field()
   @Column({comment:"指定模型ID，为0表页面空白",nullable: true})
   moduleId:number
 
-  @ManyToOne(() => Module,(module) =>module.projects)
+  @Field(()=>Module)
+  @ManyToOne(() => Module,(module) =>module.projects,{onDelete:'CASCADE'})
   module:Module
 
   @Field()

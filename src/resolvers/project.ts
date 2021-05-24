@@ -1,10 +1,20 @@
-import { Resolver, Arg, Int, Mutation, Ctx, Query } from "type-graphql";
+import { Resolver, Arg, Int, Mutation, Ctx, Query, FieldResolver, Root } from "type-graphql";
 import { MyContext } from "../types";
 import { getConnection, getManager } from "typeorm";
 import { Project } from "../entities/Project";
+import {Module} from "../entities/Module"
 @Resolver(Project)
 export class ProjectResolver {
-    @Mutation(() => Project) // ()=> [Post]
+    @FieldResolver(() => String)
+    module(
+        @Root() project: Project,
+        // @Ctx() {loaders}:MyContext
+    ) {
+        return Module.findOne({id:project.moduleId})
+      // return loaders.UserLoader.load(post.creatorId)
+    } 
+    
+    @Mutation(() => Project, { nullable: true }) // ()=> [Post]
     async createProject(
         @Arg('title', () => String) title: string,
         @Arg('identifier', () => String) identifier: string,
@@ -15,7 +25,7 @@ export class ProjectResolver {
         @Arg('note', () => String, { nullable: true }) note: string,
         // @Arg('table', () => String, { nullable: true }) table: string,
         @Ctx() { }: MyContext
-    ): Promise<Project> { //: Promise<Post[]>
+    ): Promise<Project|null> { //: Promise<Post[]>
         const csub = new Project();
         const manager = getManager();
         csub.title = title;
@@ -25,14 +35,24 @@ export class ProjectResolver {
         csub.note = note;
         csub.moduleId = moduleId;
         csub.categoryId = categoryId;
-        if(moduleId){//在该module插入该id
-            
+      
+        const module =  await manager.findOne(Module, {id:moduleId});
+        // if(module){
+        //     const project =  await manager.save(csub);
+        //     module.projects = [project]
+        //     await manager.save(module)
+        //     return project
+        // }
+        if(module){
+            csub.module = module
+            return await manager.save(csub);
         }
-        return await manager.save(csub);
+        return null
+        
     }
 
     @Query(() => Project, { nullable: true })
-    Project(
+    async project(
         @Arg('id', () => Int) id: number,
     ): Promise<Project | undefined> {
         // return Post.findOne(id, { relations: ["creator"] });
@@ -40,7 +60,7 @@ export class ProjectResolver {
     }
     
     @Query(() => [Project])
-    async Projects(
+    async projects(
         // @Arg('id', () => Int, { nullable: true }) id: number
     ): Promise<Project[]> {
         const qb = getConnection().getRepository(Project).createQueryBuilder("p")
@@ -60,11 +80,11 @@ export class ProjectResolver {
     @Mutation(() => Project, { nullable: true })
     async updateProject(
         @Arg("id", () => Int) id: number,
-        @Arg('title', () => String,{ nullable: true }) title: string,
-        @Arg('identifier', () => String,{ nullable: true }) identifier: string,
+        @Arg('title', () => String) title: string,
+        @Arg('identifier', () => String) identifier: string,
         @Arg('sort', () => Int, { nullable: true }) sort: number,
         @Arg('categoryId', () => Int, { nullable: true }) categoryId: number,
-        @Arg('cateId', () => Int, { nullable: true }) moduleId: number,
+        @Arg('moduleId', () => Int, { nullable: true }) moduleId: number,
         @Arg('status', () => Int, { nullable: true }) status: number,
         @Arg('note', () => String, { nullable: true }) note: string,
         
@@ -92,6 +112,14 @@ export class ProjectResolver {
         if(typeof status !="undefined"){
             condition = Object.assign(condition, { status })
         }
+        // if(moduleId){
+        //     const manager = getManager();
+        //     const module =  await manager.findOne(Module, {id:moduleId});
+        //     if(module){
+        //         condition = Object.assign(condition, { module })
+        //     }
+        // }
+        
         const result = await Project.update({
             id
         }, condition)
@@ -101,6 +129,7 @@ export class ProjectResolver {
                 return project
             }
         }
+       
         return null;
     }
    

@@ -38,6 +38,7 @@ export class Module extends BaseEntity {
   @Column({comment:"关联主表",default:"list"}) //请选择集成环境对应的主表，目前官网仅对分类及主题进行横向扩展
   table: string;
 
+  
   @OneToMany(() =>Project,project =>project.module)
   projects:Project[]
 

@@ -167,14 +167,42 @@ export class FieldResolver {
         if(typeof searchSeparaStor !="undefined"){
             condition = Object.assign(condition, { searchSeparaStor })
         }
-
+       
         const result = await Field.update({
             id
         }, condition)
         if (result.affected) {
-            const module = await Field.findOne(id)
-            if (module) {
-                return module
+            const field = await Field.findOne(id)
+            if (field) {
+                if(field.moduleId){//更新字段
+                    const manager = getManager();
+                     //创建字段时，修改表
+             let sql = `ALTER TABLE list_${field.moduleId} MODIFY COLUMN ${identifier} `
+             switch (type) {
+                 case "varchar":
+                    sql+=` ${type}(255)`
+                     break;
+                case "int":
+                    sql+=` ${type}(11)`
+                     break;
+                case "date":
+                case "datetime":
+                case "longtext":
+                case "longblob":
+                    sql+=` ${type}`
+                     break;
+                 default:
+                    sql+=` varchar(255)`
+                    break;
+             }
+
+             sql+= ` COMMENT '${title}'`
+             if(content){
+                sql+= ` SET DEFAULT ${content}`
+             }
+             await manager.query(sql);
+                }
+                return field
             }
         }
         return null;
