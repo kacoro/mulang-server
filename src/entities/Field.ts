@@ -9,24 +9,24 @@ export class Field extends BaseEntity {
     @PrimaryGeneratedColumn({comment:"字段id自增"})
     id!: number;
 
-    @GField({ nullable: true })
-    @Column({comment: '模型id，数字为模型id，非数字表示其他模型id ，字段创建时就应该绑定'})
-    ftype: string; 
+    @GField({nullable: true})
+    @Column({comment: '模型id，数字为模型id，非数字表示其他模型id ，空表示常用字段',nullable: true,default:""})
+    moduleId: string; 
 
     @GField()
-    @Column({comment:'字段标识符'})
+    @Column({comment:'字段标识符',default:""})
     identifier: string
 
     @GField()
-    @Column({comment:'字段名称'})
+    @Column({comment:'字段名称',default:""})
     title!: string;
 
-    @GField()
-    @Column({ type: "longtext" ,comment:'备注'})
-    note: string; //备注
+    @GField({nullable: true})
+    @Column({ type: "longtext" ,comment:'备注',nullable: true})
+    note: string ; //备注
 
     @GField()
-    @Column({comment:'字段类型'})
+    @Column({comment:'字段类型',default:""})
     type: string;
     /*
     字段类型
@@ -39,7 +39,7 @@ export class Field extends BaseEntity {
     longblob 二进制信息（适用于存储二进制数据，不清楚请不要选这一项）
    */
     @GField()
-    @Column({comment:'表单类型'})
+    @Column({comment:'表单类型',default:"text"})
     formType: string;
     /*
         表单类型
@@ -60,7 +60,7 @@ export class Field extends BaseEntity {
         pca 省市县联动（仅限国内使用，同时也用于物流应用）
     */
     @GField()
-    @Column({comment:'接收数据格式化'})
+    @Column({comment:'接收数据格式化',default:"safe"})
     format: string;
     /* 
         接收数据格式化：设置文本常见格式，如HTML，整型，浮点型等
@@ -69,16 +69,16 @@ export class Field extends BaseEntity {
     */
 
     @GField()
-    @Column({comment:'排序'})
-    order: number; //值越小越往前靠，可选范围：1-255
+    @Column({comment:'默认值',default:""})
+    content: string; //默认值
+
+    @GField()
+    @Column({comment:'排序',default:0})
+    sort: number; //值越小越往前靠，可选范围：1-255
 
     @GField()
     @Column({ type:"boolean", default: false,comment:'唯一性 0 禁用 1使用' })
     onlyone: boolean; 
-
-    @GField()
-    @Column({comment:'默认值'})
-    content: string; //默认值
 
     @GField()
     @Column({ type:"boolean", default: false ,comment:'默认值'})
@@ -89,7 +89,7 @@ export class Field extends BaseEntity {
     search: number; 
 
     @GField()
-    @Column({comment:'区间搜索时使用的分隔符'})
+    @Column({comment:'区间搜索时使用的分隔符',default:""})
     searchSeparaStor: string//区间搜索时使用的分隔符
 
 //   ext_form_id: form_btn,ext_format,ext_quick_words,ext_quick_type,ext_include_3,ext_field,ext_onlyone
@@ -99,11 +99,8 @@ export class Field extends BaseEntity {
 //     ext_include_3: 0
 //     form_style: 
 //     content: 
-    @GField()
-    @Column()
-    creatorId: number;
+  
 
-    @GField()
     @ManyToOne(() => User, user => user.posts)
     creator: User
    

@@ -32,4 +32,9 @@ export class Category extends BaseEntity {
   @TreeParent()
   parent: Category;
 
+  @Field()
+  @Column({default:0})
+  status: number;
+
+
 }

@@ -20,6 +20,7 @@ export class ModuleResolver {
     ): Promise<Module> { //: Promise<Post[]>
         const csub = new Module();
         const manager = getManager();
+        
         csub.title = title;
         csub.note = note;
         csub.sort = sort;
@@ -27,7 +28,19 @@ export class ModuleResolver {
         csub.table = table;
         csub.layout = layout;
         csub.type = type;
-        return await manager.save(csub);
+        
+         const data =  await manager.save(csub);
+         console.log(data)
+        //创建时，创建新表
+        await manager.query(`CREATE TABLE IF NOT EXISTS ${data.table}_${data.id}(
+            id INT UNSIGNED AUTO_INCREMENT,
+            projectId INT UNSIGNED,
+            categoryId INT UNSIGNED,
+            PRIMARY KEY ( id )
+        )`);
+        
+
+         return data
     }
 
     @Query(() => Module, { nullable: true })
@@ -51,8 +64,15 @@ export class ModuleResolver {
     async deleteModule(
         @Arg("id", () => Int) id: number,
         @Ctx() {  }: MyContext
-    ): Promise<boolean> {
-        await Module.delete({ id})
+    ): Promise<Boolean> {
+        const manager = getManager();
+        const data = await Module.findOne(id);
+        if(data){
+            await Module.delete({ id})
+             //创建时，创建新表
+             await manager.query(`DROP TABLE IF EXISTS ${data.table}_${data.id}`);
+        }
+        
         return true;
     }
 
