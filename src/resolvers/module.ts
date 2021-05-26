@@ -36,6 +36,8 @@ export class ModuleResolver {
             id INT UNSIGNED AUTO_INCREMENT,
             projectId INT UNSIGNED,
             categoryId INT UNSIGNED,
+            createdAt timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            updatedAt timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
             PRIMARY KEY ( id )
         )`);
         

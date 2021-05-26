@@ -1,149 +1,175 @@
 import { List } from "../entities/List";
-import { Resolver, Query, Arg, Int, Mutation, InputType, Field, Ctx, UseMiddleware, FieldResolver, Root, ObjectType } from "type-graphql";
-import { MyContext } from "../types";
-import { isAuth } from "../middleware/isAuth";
-import { getConnection } from "typeorm";
+import { Resolver, Query, Arg, Int, Mutation, ObjectType, Field } from "type-graphql";
 
-@InputType()
-class PostInput {
-    @Field()
-    title: string
-    @Field()
-    text: string
+import {  getManager } from "typeorm";
+// import GraphQLJSON, { GraphQLJSONObject } from 'graphql-type-json'
+import GraphQLJSON from 'graphql-type-json'
+
+@ObjectType()
+class Content {
+    @Field(() => GraphQLJSON)
+    content: JSON
+    
 }
 
 @ObjectType()
-class PaginatedPosts {
-    @Field(() => [List])
-    rows: List[]
+class Paginated {
+    @Field(() => [GraphQLJSON])
+    lists: JSON[]
+
+    @Field(() => Int)
+    page:number
+
+    @Field(() => Int)
+    limit:number
+    
     @Field()
     hasMore: boolean;
+
+    @Field()
+    total:number
+
+    @Field()
+    totalPage:number
 }
 
-
-
 @Resolver(List)
-export class PostResolver {
-    @FieldResolver(() => String)
-    textSnippet(
-        @Root() root: List
+export class ListResolver {
+    
+    @Mutation(()=>Boolean)
+    async createList(
+        @Arg('moduleId', () => Int) moduleId: number,
+        @Arg('projectId', () => Int) projectId: number,
+        @Arg('json', () => GraphQLJSON) json: JSON,
+
     ) {
-        return root.text.slice(0, 50)
-    }
 
-    @FieldResolver(() => String)
-    creator(
-        @Root() post: List,
-        @Ctx() {loaders}:MyContext
-    ) {
-        // return User.findOne(post.creatorId)
-       return loaders.UserLoader.load(post.creatorId)
-    }    
-
-    @FieldResolver(() => Int, { nullable: true })
-    async voteStatus(
-        @Root() root: List,
-        @Ctx() {loaders,req}:MyContext
-    ) {
-        // console.log(root.updoots)
-        // // root.updoots
-        // if (root.updoots) {
-        //     return root.updoots[0]?.value
-        // } else {
-        //     return null
-        // }
-        if(!req.session.userId){
-            return null
-        }
-        const updoot = await loaders.UpdootLoader.load({postId:root.id,userId:req.session.userId})
-        return updoot ?updoot.value:null
-    }
-
-   
-
-    @Query(() => PaginatedPosts) // ()=> [Post]
-    async posts(
-        @Arg('limit', () => Int) limit: number,
-        @Arg('cursor', () => String, { nullable: true }) cursor: string | null,
-        @Ctx() { req }: MyContext
-    ): Promise<PaginatedPosts> { //: Promise<Post[]>
-        // 20->21
-        const realLimit = Math.min(50, limit);
-        const realLimitPlusOne = realLimit + 1
-
-        const replacements: any[] = [realLimitPlusOne, req.session.userId]
-
-        if (cursor) {
-            const parseCurrsor = new Date(parseInt(cursor))
-            replacements.push(parseCurrsor)
-        }
-
-
-        const qb = getConnection().getRepository(List).createQueryBuilder("p")
-            // .innerJoinAndSelect("p.creator", "u", 'u.id = p.creatorId')
-            .orderBy("p.createdAt", "DESC").take(realLimitPlusOne)
-        // if (req.session.userId) {
-        //     qb.leftJoinAndSelect("p.updoots", "up", 'up.postId = p.id and userId =' + req.session.userId)
-        // }
-
-        if (cursor) {
-            qb.where("p.createdAt < :cursor", {
-                cursor: new Date(parseInt(cursor))
-            })
-        }
-        const posts = await qb.getMany()
-
-        return { rows: posts.slice(0, realLimit), hasMore: posts.length === realLimitPlusOne };
-    }
-
-    @Query(() => List, { nullable: true })
-    post(
-        @Arg('id', () => Int) id: number,
-    ): Promise<List | undefined> {
-        // return Post.findOne(id, { relations: ["creator"] });
-        return List.findOne(id);
-    }
-
-    @Mutation(() => List)
-    @UseMiddleware(isAuth)
-    async createPost(
-        @Arg("input") input: PostInput,
-        @Ctx() { req }: MyContext
-    ): Promise<List> {
-
-        return await List.create({ ...input, creatorId: req.session.userId }).save()
-    }
-
-    @Mutation(() => List, { nullable: true })
-    @UseMiddleware(isAuth)
-    async updatePost(
-        @Arg("id", () => Int) id: number,
-        @Arg("title") title: string,
-        @Arg("text") text: string,
-        @Ctx() { req }: MyContext
-    ): Promise<List | null> {
-
-        const result = await List.update({
-            id,
-            creatorId: req.session.userId
-        }, { title, text })
-        if (result.affected) {
-            const post = await List.findOne(id)
-            if (post) {
-                return post
+        //更严谨的应该从模块中读取字段列
+        let columns = `projectId`
+        let values =  `${projectId}`
+        for (let [key, value] of Object.entries(json)) {
+            columns +=`,${key}`
+            console.log(typeof value)
+            if(typeof value=="string"){
+                values +=`,"${value}"`
+            }else{
+                values +=`,${value}`
             }
-        }
+            //console.log([key, value]); // ['a', 1], ['b', 2], ['c', 3]
+          }
+          console.log(columns,values)
+          let sql = `
+          INSERT INTO  list_${moduleId} (${columns})
+          VALUES
+          (${values})
+          `              
+           console.log(sql)            
+        const manager = getManager();
+        await manager.query(sql)
+        return true
+    }
 
-        return null;
+    @Mutation(()=>Boolean)
+    async updateList(
+        @Arg('id', () => Int) id: number,
+        @Arg('moduleId', () => Int) moduleId: number,
+        // @Arg('projectId', () => Int) projectId: number,
+        @Arg('json', () => GraphQLJSON) json: JSON,
+
+    ) {
+        //更严谨的应该从模块中读取字段列
+        let setSql = []
+        for (let [key, value] of Object.entries(json)) {
+          
+            if(typeof value=="string"){
+                setSql.push(`${key}="${value}"`)
+              
+            }else{
+                setSql.push(`${key}=${value}`)
+            }
+            //console.log([key, value]); // ['a', 1], ['b', 2], ['c', 3]
+          }
+    
+          let sql = `UPDATE list_${moduleId} SET ${setSql.join(",")} WHERE id=${id}`              
+                
+        const manager = getManager();
+        await manager.query(sql)
+        return true
+    }
+    @Query(() => Content)
+    async list(
+         @Arg('id', () => Int) id: number,
+         @Arg('moduleId', () => Int) moduleId: number
+    ): Promise<Content|Boolean> {
+        //根据id来查询项目，模型
+        const manager = getManager();
+        // const qb = getConnection().getRepository(Module).createQueryBuilder("p")
+        // const data = await qb.getMany()
+        const data =  await manager.query(`SELECT * FROM list_${moduleId} WHERE id = ${id} LIMIT 1`)
+        if(data[0]){
+            return {content:data[0] }
+        }else{
+            return false;
+        }
+        // [WHERE Clause]
+        // [LIMIT N][ OFFSET M]
+        // ORDER BY field1 [ASC [DESC][默认 ASC]], [field2...] [ASC [DESC][默认 ASC]]
+        console.log(data)
+       
     }
 
     @Mutation(() => Boolean)
-    @UseMiddleware(isAuth)
-    async deletePost(
+    async deleteList(
         @Arg("id", () => Int) id: number,
-        @Ctx() { req }: MyContext
+        @Arg('moduleId', () => Int) moduleId: number
     ): Promise<boolean> {
-        await List.delete({ id, creatorId: req.session.userId })
+        
+        const manager = getManager();
+        const data =  await manager.query(`DELETE  FROM list_${moduleId} WHERE id = ${id}`)
+        console.log(data)
         return true;
+    }
+
+    @Query(() => Paginated)
+    async lists(
+         @Arg('moduleId', () => Int) moduleId: number,
+         @Arg('projectId', () => Int) projectId: number,
+         @Arg('categoryId', () => Int,{ nullable: true }) categoryId: number,
+         @Arg('limit', () => Int,{ nullable: true }) limit: number=20,
+         @Arg("page", () => Int,{ nullable: true }) page: number =1,
+    ): Promise<Paginated> {
+
+        //子查询优化
+        //根据id来查询项目，模型
+        const realLimit = Math.min(100, limit);
+        //let totalPageNum = (totalRecord +pageSize - 1) / pageSize;
+        const manager = getManager();
+        let whereSql = `WHERE projectId = ${projectId}`
+        if(categoryId){
+            whereSql += ` AND categoryId = ${categoryId}`
+        }
+       let offset = (page-1)*realLimit;
+      let total = 0;
+     
+        //const data =  await manager.query(`SELECT * FROM list_${moduleId} LIMIT ${limit}`)
+        let orderSql  = `ORDER BY id desc`
+
+        //子查询优化
+        //let optimtSql = `and id<=(select id from list_${moduleId}  ${whereSql} ${orderSql} limit ${offset},1)`
+        let sql = `SELECT * FROM list_${moduleId} ${whereSql} ${orderSql} LIMIT ${offset},${realLimit}`
+        
+        const data =  await manager.query(sql)
+        let totalRes =  await manager.query(`SELECT COUNT(id) FROM list_${moduleId}  ${whereSql}`)
+       
+        total = parseInt(totalRes[0]['COUNT(id)'])
+        
+        // [WHERE Clause]
+        // [LIMIT N][ OFFSET M]
+        //let totalPage = Math.ceil((total +realLimit - 1) / realLimit);
+        let totalPage = Math.ceil((total) / realLimit);
+        console.log(total,realLimit,totalPage)   
+        let hasMore = page < totalPage
+        console.log(data)
+        return {lists:data,limit,page,hasMore,total,totalPage}
     }
 }

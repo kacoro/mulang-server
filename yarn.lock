@@ -1537,6 +1537,11 @@ graphql-tools@^4.0.8:
     iterall "^1.1.3"
     uuid "^3.1.0"
 
+graphql-type-json@^0.3.2:
+  version "0.3.2"
+  resolved "https://registry.npm.taobao.org/graphql-type-json/download/graphql-type-json-0.3.2.tgz#f53a851dbfe07bd1c8157d24150064baab41e115"
+  integrity sha1-9TqFHb/ge9HIFX0kFQBkuqtB4RU=
+
 graphql-upload@^11.0.0:
   version "11.0.0"
   resolved "https://registry.npm.taobao.org/graphql-upload/download/graphql-upload-11.0.0.tgz#24b245ff18f353bab6715e8a055db9fd73035e10"
