@@ -23,6 +23,7 @@ export class ProjectResolver {
         @Arg('moduleId', () => Int) moduleId: number,
         @Arg('status', () => Int, { nullable: true }) status: number,
         @Arg('note', () => String, { nullable: true }) note: string,
+        @Arg('listFields', () => String, { nullable: true }) listFields: string,
         // @Arg('table', () => String, { nullable: true }) table: string,
         @Ctx() { }: MyContext
     ): Promise<Project|null> { //: Promise<Post[]>
@@ -35,7 +36,7 @@ export class ProjectResolver {
         csub.note = note;
         csub.moduleId = moduleId;
         csub.categoryId = categoryId;
-      
+        csub.listFields = listFields
         const module =  await manager.findOne(Module, {id:moduleId});
         // if(module){
         //     const project =  await manager.save(csub);
@@ -87,7 +88,7 @@ export class ProjectResolver {
         @Arg('moduleId', () => Int, { nullable: true }) moduleId: number,
         @Arg('status', () => Int, { nullable: true }) status: number,
         @Arg('note', () => String, { nullable: true }) note: string,
-        
+        @Arg('listFields', () => String, { nullable: true }) listFields: string,
         @Ctx() {  }: MyContext
     ): Promise<Project | null> {
         let condition = { } //管理员不需要过滤
@@ -111,6 +112,9 @@ export class ProjectResolver {
         }
         if(typeof status !="undefined"){
             condition = Object.assign(condition, { status })
+        }
+        if(typeof listFields !="undefined"){
+            condition = Object.assign(condition, { listFields })
         }
         // if(moduleId){
         //     const manager = getManager();

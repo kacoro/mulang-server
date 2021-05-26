@@ -59,6 +59,10 @@ export class Project extends BaseEntity {
   status:number
 
   @Field()
+  @Column({comment:"列表读取长度，如为空读全部",default:""})
+  listFields:string
+
+  @Field()
   @Column({comment:"封面页",default:""})
   tplIndex:string
 
@@ -77,6 +81,7 @@ export class Project extends BaseEntity {
   @Field()
   @Column({comment:"图标",default:""})
   ico:string
+
 
   @Field()
   @Column({comment:"是否自定义标识",default:true})
@@ -174,9 +179,9 @@ export class Project extends BaseEntity {
   @Field()
   @Column({comment:"运费模板ID",default:""})
   freight:string
-  @Field()
-  @Column({comment:"列表读取长度，如为空读全部",default:""})
-  listFields:string
+
+  
+
   @Field()
   @Column({comment:"网站ID",default:""})
   style:string

@@ -4,6 +4,7 @@ import { Resolver, Query, Arg, Int, Mutation, ObjectType, Field } from "type-gra
 import {  getManager } from "typeorm";
 // import GraphQLJSON, { GraphQLJSONObject } from 'graphql-type-json'
 import GraphQLJSON from 'graphql-type-json'
+import { Project } from "../entities/Project";
 
 @ObjectType()
 class Content {
@@ -102,6 +103,7 @@ export class ListResolver {
          @Arg('moduleId', () => Int) moduleId: number
     ): Promise<Content|Boolean> {
         //根据id来查询项目，模型
+        
         const manager = getManager();
         // const qb = getConnection().getRepository(Module).createQueryBuilder("p")
         // const data = await qb.getMany()
@@ -133,18 +135,33 @@ export class ListResolver {
     @Query(() => Paginated)
     async lists(
          @Arg('moduleId', () => Int) moduleId: number,
-         @Arg('projectId', () => Int) projectId: number,
+         @Arg('identifier', () => String,{ nullable: true }) identifier: string,
+         @Arg('projectId', () => Int,{ nullable: true }) projectId: number,
          @Arg('categoryId', () => Int,{ nullable: true }) categoryId: number,
          @Arg('limit', () => Int,{ nullable: true }) limit: number=20,
          @Arg("page", () => Int,{ nullable: true }) page: number =1,
-    ): Promise<Paginated> {
-
+    ): Promise<Paginated|null> {
+        let whereSql =`WHERE `;
+         if(projectId){
+             whereSql += `projectId = ${projectId}`
+        }else if(identifier){
+            const project = await Project.findOne({identifier:identifier});
+            console.log(project)
+            if(project?.id){
+                projectId = project.id
+            }else{
+                return null;
+            }
+        }else{
+            return null
+        }
+        whereSql += `projectId = ${projectId}`
         //子查询优化
         //根据id来查询项目，模型
         const realLimit = Math.min(100, limit);
         //let totalPageNum = (totalRecord +pageSize - 1) / pageSize;
         const manager = getManager();
-        let whereSql = `WHERE projectId = ${projectId}`
+        
         if(categoryId){
             whereSql += ` AND categoryId = ${categoryId}`
         }
@@ -155,9 +172,10 @@ export class ListResolver {
         let orderSql  = `ORDER BY id desc`
 
         //子查询优化
+
         //let optimtSql = `and id<=(select id from list_${moduleId}  ${whereSql} ${orderSql} limit ${offset},1)`
-        let sql = `SELECT * FROM list_${moduleId} ${whereSql} ${orderSql} LIMIT ${offset},${realLimit}`
-        
+        let sql = `SELECT id,title,createdAt FROM list_${moduleId} ${whereSql} ${orderSql} LIMIT ${offset},${realLimit}`
+        //默认读取全部,自定义。通过读取项目的list来获取。默认 id,title,createdAt,sort
         const data =  await manager.query(sql)
         let totalRes =  await manager.query(`SELECT COUNT(id) FROM list_${moduleId}  ${whereSql}`)
        

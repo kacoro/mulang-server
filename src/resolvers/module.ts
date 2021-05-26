@@ -29,18 +29,18 @@ export class ModuleResolver {
         csub.layout = layout;
         csub.type = type;
         
-         const data =  await manager.save(csub);
-         console.log(data)
+        const data =  await manager.save(csub);
+        console.log(data)
         //创建时，创建新表
         await manager.query(`CREATE TABLE IF NOT EXISTS ${data.table}_${data.id}(
             id INT UNSIGNED AUTO_INCREMENT,
             projectId INT UNSIGNED,
             categoryId INT UNSIGNED,
+            title varchar(255),
             createdAt timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
             updatedAt timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
             PRIMARY KEY ( id )
         )`);
-        
 
          return data
     }
@@ -69,10 +69,13 @@ export class ModuleResolver {
     ): Promise<Boolean> {
         const manager = getManager();
         const data = await Module.findOne(id);
+        //删除前要确保没有被project使用
         if(data){
             await Module.delete({ id})
              //创建时，创建新表
              await manager.query(`DROP TABLE IF EXISTS ${data.table}_${data.id}`);
+             //删除模块
+             await await manager.query(`DELETE  FROM  field WHERE moduleId = ${id}`)
         }
         
         return true;
