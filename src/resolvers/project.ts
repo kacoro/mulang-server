@@ -3,6 +3,8 @@ import { MyContext } from "../types";
 import { getConnection, getManager } from "typeorm";
 import { Project } from "../entities/Project";
 import {Module} from "../entities/Module"
+import { Category } from "../entities/Category"
+import { Field } from "../entities/Field"
 @Resolver(Project)
 export class ProjectResolver {
     @FieldResolver(() => String)
@@ -11,6 +13,34 @@ export class ProjectResolver {
         // @Ctx() {loaders}:MyContext
     ) {
         return Module.findOne({id:project.moduleId})
+      // return loaders.UserLoader.load(post.creatorId)
+    } 
+
+    @FieldResolver(() => [Field])
+    fields(
+        @Root() project: Project,
+        // @Ctx() {loaders}:MyContext
+    ): Promise<Field[]> {
+        return Field.find({where:{moduleId:project.moduleId}})
+      // return loaders.UserLoader.load(post.creatorId)
+    } 
+
+    @FieldResolver(() => Category,{nullable:true})
+    async category(
+        @Root() project: Project,
+        // @Ctx() {loaders}:MyContext
+    ): Promise<Category | null> {
+        let treeCategories = null
+        const manager = getManager();
+        let parentCategory = await Category.findOne({id:project.categoryId})
+        if(parentCategory){
+            let cate = await manager.getTreeRepository(Category).findDescendantsTree(parentCategory);
+            if (cate) {
+                treeCategories = cate
+            }
+        }
+        
+            return treeCategories
       // return loaders.UserLoader.load(post.creatorId)
     } 
     
@@ -46,6 +76,7 @@ export class ProjectResolver {
         // }
         if(module){
             csub.module = module
+            
             return await manager.save(csub);
         }
         return null
@@ -54,10 +85,18 @@ export class ProjectResolver {
 
     @Query(() => Project, { nullable: true })
     async project(
-        @Arg('id', () => Int) id: number,
+        @Arg('id', () => Int, { nullable: true }) id: number,
+        @Arg('identifier', () => String, { nullable: true }) identifier: string,
     ): Promise<Project | undefined> {
         // return Post.findOne(id, { relations: ["creator"] });
-        return Project.findOne(id);
+        if(id){
+            return await Project.findOne(id);
+        } else if(identifier){
+            return Project.findOne({where:{identifier:identifier}});
+        }else{
+            return undefined
+        }
+        
     }
     
     @Query(() => [Project])

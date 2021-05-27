@@ -34,6 +34,7 @@ export class ModuleResolver {
         //创建时，创建新表
         await manager.query(`CREATE TABLE IF NOT EXISTS ${data.table}_${data.id}(
             id INT UNSIGNED AUTO_INCREMENT,
+            moduleId INT UNSIGNED,
             projectId INT UNSIGNED,
             categoryId INT UNSIGNED,
             title varchar(255),

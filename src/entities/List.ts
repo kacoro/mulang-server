@@ -1,24 +1,44 @@
 
 import { Field, Int, ObjectType } from "type-graphql";
-import { BaseEntity } from "typeorm";
+import GraphQLJSON from 'graphql-type-json'
+
 
 @ObjectType()
-export class List extends BaseEntity {
+
+export class List  {
+  
   @Field(() => Int)
   id!: number;
 
-  parentId: number;
+  @Field(() => String)
+  title:string;
 
-  cateId: number;
-
-  moduleId:number;
-
+  @Field(() => Int)
   projectId:number;
 
-  @Field(() => Int,{nullable:true})
-  voteStatus:number | null; // 1 or -1 or null
+  @Field(() => Int)
+  categoryId: number;
 
-  @Field()
-  title!: string;
+  @Field(()=> String)
+  createdAt =  new Date();
+
+  @Field(()=> String)
+  updateAt =  new Date();
+
+
+
+  @Field(()=> String,{nullable:true})
+  note : string;
+
+  @Field(()=> String,{nullable:true})
+  thumb :string;
+
+  @Field(()=> String,{nullable:true})
+  banner :string;
+
+
+  //把其余的字段放到other，以后处理。
+  @Field(() => [GraphQLJSON]) 
+  other:JSON[]
 
 }
