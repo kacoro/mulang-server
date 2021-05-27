@@ -1,6 +1,7 @@
 
 import { Field, Int, ObjectType } from "type-graphql";
-import GraphQLJSON from 'graphql-type-json'
+ import GraphQLJSON from 'graphql-type-json'
+// import { GraphQLJSONObject } from 'graphql-type-json'
 
 
 @ObjectType()
@@ -38,7 +39,7 @@ export class List  {
 
 
   //把其余的字段放到other，以后处理。
-  @Field(() => [GraphQLJSON]) 
-  other:JSON[]
+  @Field(() => GraphQLJSON,{nullable:true}) 
+  other:JSON
 
 }

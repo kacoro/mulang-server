@@ -6,6 +6,7 @@ import {  getManager } from "typeorm";
 import GraphQLJSON from 'graphql-type-json'
 import { Project } from "../entities/Project";
 
+// import { createUnionType } from "type-graphql";
 
 
 @ObjectType()
@@ -17,11 +18,11 @@ class Content {
 
 @ObjectType()
 class Paginated {
-    @Field(() => [GraphQLJSON])
-    lists: JSON[]
+    // @Field(() => [GraphQLJSON])
+    // lists: JSON[]
 
-    // @Field(() => [List])
-    // lists: List[]
+    @Field(() => [List])
+    lists: List[]
 
     @Field(() => Int)
     page:number
@@ -202,6 +203,8 @@ export class ListResolver {
          @Arg("page", () => Int,{ nullable: true }) page: number =1,
     ): Promise<Paginated|null> {
         let whereSql =`WHERE `;
+        let columnSql = 'id,title,projectId,categoryId,createdAt'
+        
          if(projectId){
              whereSql += `projectId = ${projectId}`
         }else if(identifier){
@@ -233,9 +236,9 @@ export class ListResolver {
         let orderSql  = `ORDER BY id desc`
 
         //子查询优化
-
+        columnSql += `,note,subTitle`
         //let optimtSql = `and id<=(select id from list_${moduleId}  ${whereSql} ${orderSql} limit ${offset},1)`
-        let sql = `SELECT id,title,projectId,categoryId,createdAt FROM list_${moduleId} ${whereSql} ${orderSql} LIMIT ${offset},${realLimit}`
+        let sql = `SELECT ${columnSql} FROM list_${moduleId} ${whereSql} ${orderSql} LIMIT ${offset},${realLimit}`
         //默认读取全部,自定义。通过读取项目的list来获取。默认 id,title,createdAt,sort
         const data =  await manager.query(sql)
         let totalRes =  await manager.query(`SELECT COUNT(id) FROM list_${moduleId}  ${whereSql}`)
@@ -248,7 +251,18 @@ export class ListResolver {
         let totalPage = Math.ceil((total) / realLimit);
         console.log(total,realLimit,totalPage)   
         let hasMore = page < totalPage
-        console.log(data)
-        return {lists:data,limit,page,hasMore,total,totalPage}
+        // console.log(data)
+        let result = data.map((item: any)=>{
+            console.log(item)
+            const {id,title,projectId,categoryId,createdAt,...other} = item
+            
+            // let other = JSON.stringify(others)
+            
+            // console.log(other)
+            return {id,title,projectId,categoryId,createdAt,other}
+        })
+        console.log(result)
+
+        return {lists:result,limit,page,hasMore,total,totalPage}
     }
 }
