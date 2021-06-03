@@ -41,6 +41,8 @@ export class Field extends BaseEntity {
     @GField()
     @Column({comment:'表单类型',default:"text"})
     formType: string;
+
+    
     /*
         表单类型
         text 文本框（不支持回车符号，不超过255个字符或80个汉字的时候建议选择）
@@ -59,6 +61,11 @@ export class Field extends BaseEntity {
         param 规格参数（字段类型请选择长文本，否则数据会被截断出错）
         pca 省市县联动（仅限国内使用，同时也用于物流应用）
     */
+
+    @GField()
+    @Column({comment:'表单扩展内容',default:""})
+    formExt: string;
+
     @GField()
     @Column({comment:'接收数据格式化',default:"safe"})
     format: string;

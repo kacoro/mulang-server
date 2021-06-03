@@ -1,13 +1,17 @@
-import { Resolver, Arg, Int, Mutation, Ctx, Query, FieldResolver, Root } from "type-graphql";
+import { Resolver, Arg, Int, Mutation, Ctx, Query, FieldResolver, Root, UseMiddleware } from "type-graphql";
 import { MyContext } from "../types";
 import { getConnection, getManager } from "typeorm";
 import { Project } from "../entities/Project";
 import {Module} from "../entities/Module"
 import { Category } from "../entities/Category"
 import { Field } from "../entities/Field"
+import { Seo } from "../entities/Seo";
+import GraphQLJSON from "graphql-type-json";
+import { isAuth } from "../middleware/isAuth";
 @Resolver(Project)
 export class ProjectResolver {
-    @FieldResolver(() => String)
+
+    @FieldResolver(() => Module,{nullable:true})
     module(
         @Root() project: Project,
         // @Ctx() {loaders}:MyContext
@@ -16,13 +20,24 @@ export class ProjectResolver {
       // return loaders.UserLoader.load(post.creatorId)
     } 
 
-    @FieldResolver(() => [Field])
+    @FieldResolver(() => Seo,{nullable:true})
+    seo(
+        @Root() project: Project,
+    ):Seo|null{
+        if(project.isSeo&&(project.seoTitle||project.seoKeywords||project.seoDesc)){
+            return {title:project.seoTitle,keywords:project.seoKeywords,description:project.seoDesc}
+        }else{
+            return null
+        }
+    }
+
+    @FieldResolver(() => [Field],{nullable:true})
     fields(
         @Root() project: Project,
-        // @Ctx() {loaders}:MyContext
-    ): Promise<Field[]> {
-        return Field.find({where:{moduleId:project.moduleId}})
-      // return loaders.UserLoader.load(post.creatorId)
+         @Ctx() {loaders}:MyContext
+    ): Promise<Field[]|null> {
+       // return Field.find({where:{moduleId:project.moduleId},order:{sort:"ASC"}})
+      return loaders.FieldLoader.load(project.moduleId)
     } 
 
     @FieldResolver(() => Category,{nullable:true})
@@ -30,7 +45,7 @@ export class ProjectResolver {
         @Root() project: Project,
         // @Ctx() {loaders}:MyContext
     ): Promise<Category | null> {
-        let treeCategories = null
+        let treeCategories = null;
         const manager = getManager();
         let parentCategory = await Category.findOne({id:project.categoryId})
         if(parentCategory){
@@ -45,6 +60,7 @@ export class ProjectResolver {
     } 
     
     @Mutation(() => Project, { nullable: true }) // ()=> [Post]
+    @UseMiddleware(isAuth)
     async createProject(
         @Arg('title', () => String) title: string,
         @Arg('identifier', () => String) identifier: string,
@@ -54,6 +70,8 @@ export class ProjectResolver {
         @Arg('status', () => Int, { nullable: true }) status: number,
         @Arg('note', () => String, { nullable: true }) note: string,
         @Arg('listFields', () => String, { nullable: true }) listFields: string,
+        @Arg('isSeo', () => Int, { nullable: true }) isSeo: number,
+        @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
         // @Arg('table', () => String, { nullable: true }) table: string,
         @Ctx() { }: MyContext
     ): Promise<Project|null> { //: Promise<Post[]>
@@ -67,7 +85,16 @@ export class ProjectResolver {
         csub.moduleId = moduleId;
         csub.categoryId = categoryId;
         csub.listFields = listFields
+        
         const module =  await manager.findOne(Module, {id:moduleId});
+        if(typeof isSeo !="undefined"){
+            csub.isSeo = isSeo
+            if(typeof seo !="undefined"&&isSeo!=0){
+                csub.seoTitle = seo.title||""
+                csub.seoKeywords = seo.keywords||""
+                csub.seoDesc = seo.description||""
+            }
+        }
         // if(module){
         //     const project =  await manager.save(csub);
         //     module.projects = [project]
@@ -109,6 +136,7 @@ export class ProjectResolver {
     }
 
     @Mutation(() => Boolean)
+    @UseMiddleware(isAuth)
     async deleteProject(
         @Arg("id", () => Int) id: number,
         @Ctx() {  }: MyContext
@@ -118,6 +146,7 @@ export class ProjectResolver {
     }
 
     @Mutation(() => Project, { nullable: true })
+    @UseMiddleware(isAuth)
     async updateProject(
         @Arg("id", () => Int) id: number,
         @Arg('title', () => String) title: string,
@@ -127,6 +156,8 @@ export class ProjectResolver {
         @Arg('moduleId', () => Int, { nullable: true }) moduleId: number,
         @Arg('status', () => Int, { nullable: true }) status: number,
         @Arg('note', () => String, { nullable: true }) note: string,
+        @Arg('isSeo', () => Int, { nullable: true }) isSeo: number,
+        @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
         @Arg('listFields', () => String, { nullable: true }) listFields: string,
         @Ctx() {  }: MyContext
     ): Promise<Project | null> {
@@ -155,13 +186,14 @@ export class ProjectResolver {
         if(typeof listFields !="undefined"){
             condition = Object.assign(condition, { listFields })
         }
-        // if(moduleId){
-        //     const manager = getManager();
-        //     const module =  await manager.findOne(Module, {id:moduleId});
-        //     if(module){
-        //         condition = Object.assign(condition, { module })
-        //     }
-        // }
+        if(typeof isSeo !="undefined"){
+            condition = Object.assign(condition, { isSeo })
+            if(typeof seo !="undefined"&&isSeo!=0){
+                condition = Object.assign(condition, { seoTitle:seo.title||"" })
+                condition = Object.assign(condition, { seoKeywords:seo.keywords||"" })
+                condition = Object.assign(condition, { seoDesc:seo.description||"" })
+            }
+        }
         
         const result = await Project.update({
             id

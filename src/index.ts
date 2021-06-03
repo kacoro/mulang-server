@@ -51,7 +51,7 @@ const main = async () => {
         res.send('hello')
     })
     app.use(express.static('public'));
-    app.use(graphqlUploadExpress({ maxFileSize: 10*1024*1024,maxFieldSize: 10*1024*1024, maxFiles: 10 }));
+    app.use(graphqlUploadExpress({ maxFileSize: 20*1024*1024,maxFieldSize: 10*1024*1024, maxFiles: 10 }));
     
     const apolloServer = new ApolloServer({
         schema: await buildSchema({

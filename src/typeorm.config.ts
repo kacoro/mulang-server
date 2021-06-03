@@ -16,5 +16,6 @@ export default {
     // entities:[Post, User,Updoot],
     entities: [ path.join(__dirname,'./entities/**{.ts,.js}') ],
     migrations:[path.join(__dirname,"./migrations/*")],
-    
+    // debug:true,
+    // log:true
 } as  ConnectionOptions ;

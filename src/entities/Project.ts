@@ -104,6 +104,10 @@ export class Project extends BaseEntity {
   userId :string
 
   @Field()
+  @Column({comment:"是否使用seo,类型 0不使用 1启用非必填默认隐藏，2启用非必填默认显示，3启用必填",default:0})
+  isSeo:number
+  
+  @Field()
   @Column({comment:"SEO标题",default:""})
   seoTitle:string
   
@@ -132,9 +136,8 @@ export class Project extends BaseEntity {
   @Field()
   @Column({comment:"是否自定义内容模板",default:false})
   isTplContent:boolean
-  @Field()
-  @Column({comment:"是否默认使用seo",default:false})
-  isSeo:boolean
+  
+
   @Field()
   @Column({comment:"默认货币ID",default:""})
   currencyId :string
@@ -185,6 +188,7 @@ export class Project extends BaseEntity {
   @Field()
   @Column({comment:"网站ID",default:""})
   style:string
+
   @Field()
   @Column({comment:"是否直接访问前台",default:""})
   isFront:string

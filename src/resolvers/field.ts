@@ -1,10 +1,12 @@
-import { Resolver, Arg, Int, Mutation, Ctx, Query } from "type-graphql";
+import { Resolver, Arg, Int, Mutation, Ctx, Query, UseMiddleware } from "type-graphql";
 import { MyContext } from "../types";
 import { getConnection, getManager } from "typeorm";
 import { Field } from "../entities/Field";
+import { isAuth } from "../middleware/isAuth";
 @Resolver(Field)
 export class FieldResolver {
     @Mutation(() => Field) // ()=> [Post]
+    @UseMiddleware(isAuth)
     async createField(
         @Arg('moduleId', () => String, { nullable: true }) moduleId: string|null,
         @Arg('title', () => String) title: string,
@@ -12,6 +14,7 @@ export class FieldResolver {
         @Arg('note', () => String, { nullable: true }) note: string,
         @Arg('type', () => String, { nullable: true }) type: string,
         @Arg('formType', () => String, { nullable: true }) formType: string,
+        @Arg('formExt', () => String, { nullable: true }) formExt: string,
         @Arg('format', () => String, { nullable: true }) format: string,
         @Arg('content', () => String, { nullable: true }) content: string,
         @Arg('sort', () => Int, { nullable: true }) sort: number,
@@ -25,7 +28,7 @@ export class FieldResolver {
     ): Promise<Field> { //: Promise<Post[]>
         let csub = new Field();
         const manager = getManager();
-        csub = Object.assign(csub,{moduleId,title,identifier,note,type,formType,format,sort,onlyone,content,isFront,search,searchSeparaStor})
+        csub = Object.assign(csub,{moduleId,title,identifier,note,type,formType,formExt,format,sort,onlyone,content,isFront,search,searchSeparaStor})
        
         if(moduleId){
              //创建字段时，修改表
@@ -70,7 +73,7 @@ export class FieldResolver {
     async fields(
         @Arg('moduleId', () => String, { nullable: true }) moduleId: string
     ): Promise<Field[]> {
-        let qb = getConnection().getRepository(Field).createQueryBuilder("p")
+        let qb = getConnection().getRepository(Field).createQueryBuilder("p").orderBy("sort","ASC")
         if(moduleId){
             qb = qb.where({moduleId})
         }else{
@@ -95,6 +98,7 @@ export class FieldResolver {
     }
 
     @Mutation(() => Boolean)
+    @UseMiddleware(isAuth)
     async deleteField(
         @Arg("id", () => Int) id: number,
         @Ctx() {  }: MyContext
@@ -107,12 +111,14 @@ export class FieldResolver {
             await manager.query(sql);
             
         }
+        //删除字段时需要删除module的layout和project的listFields
         
         await Field.delete({ id})
         return true;
     }
 
     @Mutation(() => Field, { nullable: true })
+    @UseMiddleware(isAuth)
     async updateField(
         @Arg("id", () => Int) id: number,
         @Arg('title', () => String, { nullable: true }) title: string,
@@ -120,6 +126,7 @@ export class FieldResolver {
         @Arg('note', () => String, { nullable: true }) note: string,
         @Arg('type', () => String, { nullable: true }) type: string,
         @Arg('formType', () => String, { nullable: true }) formType: string,
+        @Arg('formExt', () => String, { nullable: true }) formExt: string,
         @Arg('format', () => String, { nullable: true }) format: string,
         @Arg('content', () => String, { nullable: true }) content: string,
         @Arg('sort', () => Int, { nullable: true }) sort: number,
@@ -145,6 +152,9 @@ export class FieldResolver {
         }
         if(typeof formType !="undefined"){
             condition = Object.assign(condition, { formType })
+        }
+        if(typeof formExt !="undefined"){
+            condition = Object.assign(condition, { formExt })
         }
         if(typeof format !="undefined"){
             condition = Object.assign(condition, { format })

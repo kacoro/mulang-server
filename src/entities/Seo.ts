@@ -1,27 +1,16 @@
-import {Entity, PrimaryGeneratedColumn, Column} from "typeorm";
+import { Field,  ObjectType } from "type-graphql";
 
-@Entity()
+@ObjectType()
+
 export class Seo {
 
-    @PrimaryGeneratedColumn()
-    id: number;
-
-    @Column()
+    @Field( ()=>String,{nullable:true})
     title: string;
 
-    @Column()
+    @Field(()=>String,{nullable:true})
     keywords: string;
 
-    @Column()
+    @Field(()=>String,{nullable:true})
     description: string;
 
 }
-
-
-// how to use
-/*
-import {Seo} from "./Seo";
-@OneToOne(() => Seo)
-@JoinColumn()
-seo: Seo;
-*/

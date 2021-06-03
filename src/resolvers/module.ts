@@ -1,10 +1,12 @@
-import { Resolver, Arg, Int, Mutation, Ctx, Query } from "type-graphql";
+import { Resolver, Arg, Int, Mutation, Ctx, Query, UseMiddleware } from "type-graphql";
 import { MyContext } from "../types";
 import { getConnection, getManager } from "typeorm";
 import { Module } from "../entities/Module";
+import { isAuth } from "../middleware/isAuth";
 @Resolver(Module)
 export class ModuleResolver {
     @Mutation(() => Module) // ()=> [Post]
+    @UseMiddleware(isAuth)
     async createModule(
         @Arg('title', () => String) title: string,
         @Arg('note', () => String, { nullable: true }) note: string,
@@ -13,14 +15,13 @@ export class ModuleResolver {
         @Arg('type', () => Int, { nullable: true }) type: number,
         @Arg('status', () => Int, { nullable: true }) status: number,
         @Arg('table', () => String, { nullable: true }) table: string,
-        
+        @Arg('isSeo', () => Boolean, { nullable: true }) isSeo: boolean,
         
         // @Arg('table', () => String, { nullable: true }) table: string,
         @Ctx() { }: MyContext
     ): Promise<Module> { //: Promise<Post[]>
         const csub = new Module();
         const manager = getManager();
-        
         csub.title = title;
         csub.note = note;
         csub.sort = sort;
@@ -28,10 +29,11 @@ export class ModuleResolver {
         csub.table = table;
         csub.layout = layout;
         csub.type = type;
-        
+        csub.isSeo = isSeo;
         const data =  await manager.save(csub);
         console.log(data)
         //创建时，创建新表
+       
         await manager.query(`CREATE TABLE IF NOT EXISTS ${data.table}_${data.id}(
             id INT UNSIGNED AUTO_INCREMENT,
             moduleId INT UNSIGNED,
@@ -43,6 +45,12 @@ export class ModuleResolver {
             PRIMARY KEY ( id )
         )`);
 
+        if(isSeo){ //为真添加
+            const manager =  getManager();
+            let sql = `ALTER TABLE list_${data.id} `
+            sql += `Add seoTitle varchar(255),Add seoKeywords varchar(255),Add seoDesc varchar(255) `
+            await manager.query(sql);
+        }   
          return data
     }
 
@@ -64,6 +72,7 @@ export class ModuleResolver {
     }
 
     @Mutation(() => Boolean)
+    @UseMiddleware(isAuth)
     async deleteModule(
         @Arg("id", () => Int) id: number,
         @Ctx() {  }: MyContext
@@ -83,6 +92,7 @@ export class ModuleResolver {
     }
 
     @Mutation(() => Module, { nullable: true })
+    @UseMiddleware(isAuth)
     async updateModule(
         @Arg("id", () => Int) id: number,
         @Arg('title', () => String, { nullable: true }) title: string,
@@ -92,6 +102,7 @@ export class ModuleResolver {
         @Arg('type', () => Int, { nullable: true }) type: number,
         @Arg('status', () => Int, { nullable: true }) status: number,
         @Arg('table', () => String, { nullable: true }) table: string,
+        @Arg('isSeo', () => Boolean, { nullable: true }) isSeo: boolean,
         @Ctx() {  }: MyContext
     ): Promise<Module | null> {
         let condition = { } //管理员不需要过滤
@@ -115,6 +126,21 @@ export class ModuleResolver {
         }
         if(typeof table !="undefined"){
             condition = Object.assign(condition, { table })
+        }
+        const oldModule = await Module.findOne(id)
+        if(!oldModule) return null
+        if(typeof isSeo !="undefined"&&oldModule.isSeo!=isSeo){
+            
+            condition = Object.assign(condition, { isSeo })
+            //更新seo 需要改变 数据列 即添加或删除
+            const manager =  getManager();
+            let sql = `ALTER TABLE list_${id} `
+            if(isSeo){ //为真添加
+                sql += `Add seoTitle varchar(255),Add seoKeywords varchar(255),Add seoDesc varchar(255) `
+            }else{ //为假删除
+                 sql += `Drop seoTitle seoKeywords seoDesc`
+            }
+            await manager.query(sql);
         }
 
         const result = await Module.update({

@@ -35,6 +35,10 @@ export class Module extends BaseEntity {
   type: number;
 
   @Field()
+  @Column({comment:"类型 0不使用 1启用非必填默认隐藏，2启用非必填默认显示，3启用必填,",default:false})
+  isSeo: boolean;
+
+  @Field()
   @Column({comment:"关联主表",default:"list"}) //请选择集成环境对应的主表，目前官网仅对分类及主题进行横向扩展
   table: string;
 
@@ -42,11 +46,11 @@ export class Module extends BaseEntity {
   @OneToMany(() =>Project,project =>project.module)
   projects:Project[]
 
-  @Field(()=> String)
+  @Field(()=> String,{nullable:true})
   @CreateDateColumn({type:'timestamp',length:''})
   createdAt = new Date();
 
-  @Field(()=> String)
+  @Field(()=> String,{nullable:true})
   @UpdateDateColumn({type:'timestamp',length:''})
   updatedAt = new Date();
  

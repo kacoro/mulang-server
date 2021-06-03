@@ -7,6 +7,7 @@ import { UploadResolver } from "./upload";
 import { FieldResolver } from "./field";
 import { ProjectResolver } from "./project";
 import { ListResolver } from "./list";
+import { SiteResolver } from "./site";
 export const resolvers = [
     HelloResolver, 
     FieldResolver,
@@ -16,7 +17,8 @@ export const resolvers = [
     CateResolver,
     ModuleResolver,
     ProjectResolver,
-    ListResolver
+    ListResolver,
+    SiteResolver
 ]  as const
 
    

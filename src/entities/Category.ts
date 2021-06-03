@@ -36,6 +36,17 @@ export class Category extends BaseEntity {
   @Column({default:0})
   status: number;
 
+  @Field()
+  @Column({comment:"SEO标题",default:""})
+  seoTitle:string
+  
+  @Field()
+  @Column({comment:"SEO关键字",default:""})
+  seoKeywords:string
+  
+  @Field()
+  @Column({comment:"SEO描述",default:""})
+  seoDesc :string
     
 
 }
