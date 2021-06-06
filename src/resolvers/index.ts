@@ -8,6 +8,8 @@ import { FieldResolver } from "./field";
 import { ProjectResolver } from "./project";
 import { ListResolver } from "./list";
 import { SiteResolver } from "./site";
+import { OptionResolver } from "./option";
+import { OptionGroupResolver } from "./optionGroup";
 export const resolvers = [
     HelloResolver, 
     FieldResolver,
@@ -18,7 +20,9 @@ export const resolvers = [
     ModuleResolver,
     ProjectResolver,
     ListResolver,
-    SiteResolver
+    SiteResolver,
+    OptionResolver,
+    OptionGroupResolver
 ]  as const
 
    

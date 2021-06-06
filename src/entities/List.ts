@@ -20,12 +20,17 @@ export class List  {
   @Field(() => Int)
   categoryId: number;
 
-  @Field(()=> String)
+  @Field(()=> String,{nullable:true})
   createdAt =  new Date();
 
-  @Field(()=> String)
+  @Field(()=> String,{nullable:true})
   updateAt =  new Date();
 
+  @Field(()=> String,{nullable:true})
+  createTime:string;
+
+  @Field(()=> String,{nullable:true})
+  updateTime:string;
 
 
   @Field(()=> String,{nullable:true})

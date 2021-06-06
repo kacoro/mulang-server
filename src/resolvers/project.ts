@@ -129,8 +129,12 @@ export class ProjectResolver {
     @Query(() => [Project])
     async projects(
         // @Arg('id', () => Int, { nullable: true }) id: number
+        @Arg('status', () => Int, { nullable: true }) status: number,
     ): Promise<Project[]> {
         const qb = getConnection().getRepository(Project).createQueryBuilder("p")
+        if(typeof status !="undefined"){
+            qb.where({status:status})
+        }
         const data = await qb.getMany()
         return data
     }
@@ -149,8 +153,8 @@ export class ProjectResolver {
     @UseMiddleware(isAuth)
     async updateProject(
         @Arg("id", () => Int) id: number,
-        @Arg('title', () => String) title: string,
-        @Arg('identifier', () => String) identifier: string,
+        @Arg('title', () => String, { nullable: true }) title: string,
+        @Arg('identifier', () => String, { nullable: true }) identifier: string,
         @Arg('sort', () => Int, { nullable: true }) sort: number,
         @Arg('categoryId', () => Int, { nullable: true }) categoryId: number,
         @Arg('moduleId', () => Int, { nullable: true }) moduleId: number,

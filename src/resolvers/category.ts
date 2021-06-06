@@ -108,7 +108,6 @@ export class CateResolver {
             }
         }
 
-        console.log(treeCategories)
         return treeCategories
     }
 

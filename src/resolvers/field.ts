@@ -8,7 +8,7 @@ export class FieldResolver {
     @Mutation(() => Field) // ()=> [Post]
     @UseMiddleware(isAuth)
     async createField(
-        @Arg('moduleId', () => String, { nullable: true }) moduleId: string|null,
+        @Arg('moduleId', () => String, { nullable: true }) moduleId: string | null,
         @Arg('title', () => String) title: string,
         @Arg('identifier', () => String) identifier: string,
         @Arg('note', () => String, { nullable: true }) note: string,
@@ -22,40 +22,40 @@ export class FieldResolver {
         @Arg('isFront', () => Boolean, { nullable: true }) isFront: boolean,
         @Arg('search', () => Int, { nullable: true }) search: number,
         @Arg('searchSeparaStor', () => String, { nullable: true }) searchSeparaStor: string,
-        
+
         // @Arg('table', () => String, { nullable: true }) table: string,
         @Ctx() { }: MyContext
     ): Promise<Field> { //: Promise<Post[]>
         let csub = new Field();
         const manager = getManager();
-        csub = Object.assign(csub,{moduleId,title,identifier,note,type,formType,formExt,format,sort,onlyone,content,isFront,search,searchSeparaStor})
-       
-        if(moduleId){
-             //创建字段时，修改表
-             let sql = `ALTER TABLE list_${moduleId} ADD ${identifier} `
-             switch (type) {
-                 case "varchar":
-                    sql+=` ${type}(255)`
-                     break;
+        csub = Object.assign(csub, { moduleId, title, identifier, note, type, formType, formExt, format, sort, onlyone, content, isFront, search, searchSeparaStor })
+
+        if (moduleId) {
+            //创建字段时，修改表
+            let sql = `ALTER TABLE list_${moduleId} ADD ${identifier} `
+            switch (type) {
+                case "varchar":
+                    sql += ` ${type}(255)`
+                    break;
                 case "int":
-                    sql+=` ${type}(11)`
-                     break;
+                    sql += ` ${type}(11)`
+                    break;
                 case "date":
                 case "datetime":
                 case "longtext":
                 case "longblob":
-                    sql+=` ${type}`
-                     break;
-                 default:
-                    sql+=` varchar(255)`
+                    sql += ` ${type}`
                     break;
-             }
+                default:
+                    sql += ` varchar(255)`
+                    break;
+            }
 
-             sql+= ` COMMENT '${title}'`
-             if(content){
-                sql+= ` SET DEFAULT ${content}`
-             }
-             await manager.query(sql);
+            sql += ` COMMENT '${title}'`
+            if (content) {
+                sql += ` SET DEFAULT ${content}`
+            }
+            await manager.query(sql);
         }
         const data = await manager.save(csub)
         return data;
@@ -68,19 +68,19 @@ export class FieldResolver {
         // return Post.findOne(id, { relations: ["creator"] });
         return Field.findOne(id);
     }
-    
+
     @Query(() => [Field])
     async fields(
         @Arg('moduleId', () => String, { nullable: true }) moduleId: string
     ): Promise<Field[]> {
-        let qb = getConnection().getRepository(Field).createQueryBuilder("p").orderBy("sort","ASC")
-        if(moduleId){
-            qb = qb.where({moduleId})
-        }else{
-            qb = qb.where({moduleId:""})
+        let qb = getConnection().getRepository(Field).createQueryBuilder("p").orderBy("sort", "ASC")
+        if (moduleId) {
+            qb = qb.where({ moduleId })
+        } else {
+            qb = qb.where({ moduleId: "" })
         }
         const data = await qb.getMany()
-        
+
         return data
     }
 
@@ -89,11 +89,11 @@ export class FieldResolver {
         @Arg('moduleId', () => String, { nullable: true }) moduleId: string
     ): Promise<Field[]> {
         let qb = getConnection().getRepository(Field).createQueryBuilder("p")
-        if(moduleId){
-            qb = qb.where({moduleId})
+        if (moduleId) {
+            qb = qb.where({ moduleId }).orderBy({sort:"ASC"})
         }
         const data = await qb.getMany()
-        
+
         return data
     }
 
@@ -101,19 +101,19 @@ export class FieldResolver {
     @UseMiddleware(isAuth)
     async deleteField(
         @Arg("id", () => Int) id: number,
-        @Ctx() {  }: MyContext
+        @Ctx() { }: MyContext
     ): Promise<boolean> {
         //删除字段的时候需要处理相应的数据列
-        const manager =  getManager();
+        const manager = getManager();
         const data = await Field.findOne(id);
-        if(data?.moduleId){
+        if (data?.moduleId) {
             let sql = `ALTER TABLE list_${data.moduleId} Drop ${data.identifier} `
             await manager.query(sql);
-            
+
         }
         //删除字段时需要删除module的layout和project的listFields
-        
-        await Field.delete({ id})
+
+        await Field.delete({ id })
         return true;
     }
 
@@ -134,89 +134,90 @@ export class FieldResolver {
         @Arg('isFront', () => Boolean, { nullable: true }) isFront: boolean,
         @Arg('search', () => Int, { nullable: true }) search: number,
         @Arg('searchSeparaStor', () => String, { nullable: true }) searchSeparaStor: string,
-        @Ctx() {  }: MyContext
+        @Ctx() { }: MyContext
     ): Promise<Field | null> {
-        let condition = { } //管理员不需要过滤
-        if(typeof title !="undefined"){
+        let condition = {} //管理员不需要过滤
+        if (typeof title != "undefined") {
             condition = Object.assign(condition, { title })
         }
-        if(typeof identifier !="undefined"){
+        if (typeof identifier != "undefined") {
             condition = Object.assign(condition, { identifier })
         }
-        
-        if(typeof note !="undefined"){
+
+        if (typeof note != "undefined") {
             condition = Object.assign(condition, { note })
         }
-        if(typeof type !="undefined"){
+        if (typeof type != "undefined") {
             condition = Object.assign(condition, { type })
         }
-        if(typeof formType !="undefined"){
+        if (typeof formType != "undefined") {
             condition = Object.assign(condition, { formType })
         }
-        if(typeof formExt !="undefined"){
+        if (typeof formExt != "undefined") {
             condition = Object.assign(condition, { formExt })
         }
-        if(typeof format !="undefined"){
+        if (typeof format != "undefined") {
             condition = Object.assign(condition, { format })
         }
-        if(typeof sort !="undefined"){
+        if (typeof sort != "undefined") {
             condition = Object.assign(condition, { sort })
         }
-        if(typeof onlyone !="undefined"){
+        if (typeof onlyone != "undefined") {
             condition = Object.assign(condition, { onlyone })
         }
-        if(typeof content !="undefined"){
+        if (typeof content != "undefined") {
             condition = Object.assign(condition, { content })
         }
-        if(typeof isFront !="undefined"){
+        if (typeof isFront != "undefined") {
             condition = Object.assign(condition, { isFront })
         }
-        if(typeof search !="undefined"){
+        if (typeof search != "undefined") {
             condition = Object.assign(condition, { search })
         }
-        if(typeof searchSeparaStor !="undefined"){
+        if (typeof searchSeparaStor != "undefined") {
             condition = Object.assign(condition, { searchSeparaStor })
         }
-       
+
         const result = await Field.update({
             id
         }, condition)
         if (result.affected) {
             const field = await Field.findOne(id)
             if (field) {
-                if(field.moduleId){//更新字段
+                //只有传递了title,type,时才能修改
+                if (typeof type != "undefined"&&typeof identifier != "undefined"&&typeof title != "undefined"&&field.moduleId) {//更新字段
                     const manager = getManager();
-                     //创建字段时，修改表
-             let sql = `ALTER TABLE list_${field.moduleId} MODIFY COLUMN ${identifier} `
-             switch (type) {
-                 case "varchar":
-                    sql+=` ${type}(255)`
-                     break;
-                case "int":
-                    sql+=` ${type}(11)`
-                     break;
-                case "date":
-                case "datetime":
-                case "longtext":
-                case "longblob":
-                    sql+=` ${type}`
-                     break;
-                 default:
-                    sql+=` varchar(255)`
-                    break;
-             }
+                    //创建字段时，修改表
+                    let sql = `ALTER TABLE list_${field.moduleId} MODIFY COLUMN ${identifier} `
+                    switch (type) {
+                        case "varchar":
+                            sql += ` ${type}(255)`
+                            break;
+                        case "int":
+                            sql += ` ${type}(11)`
+                            break;
+                        case "date":
+                        case "datetime":
+                        case "longtext":
+                        case "longblob":
+                            sql += ` ${type}`
+                            break;
+                        default:
+                            sql += ` varchar(255)`
+                            break;
+                    }
 
-             sql+= ` COMMENT '${title}'`
-             if(content){
-                sql+= ` SET DEFAULT ${content}`
-             }
-             await manager.query(sql);
+                    sql += ` COMMENT '${title}'`
+                    if (content) {
+                        sql += ` SET DEFAULT ${content}`
+                    }
+                    await manager.query(sql);
                 }
                 return field
             }
         }
         return null;
     }
-   
+
 }
 

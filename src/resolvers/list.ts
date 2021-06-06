@@ -1,6 +1,6 @@
 import { List } from "../entities/List";
 import { Resolver, Query, Arg, Int, Mutation, ObjectType, Field, UseMiddleware, } from "type-graphql";
-
+import dayjs from "dayjs"
 import { getManager } from "typeorm";
 // import GraphQLJSON, { GraphQLJSONObject } from 'graphql-type-json'
 import GraphQLJSON from 'graphql-type-json'
@@ -32,6 +32,8 @@ class Content {
     seo:Seo|null
    
 }
+
+
 
 @ObjectType()
 class Paginated {
@@ -89,8 +91,20 @@ export class ListResolver {
             //console.log([key, value]); // ['a', 1], ['b', 2], ['c', 3]
         }
         if(isSeo>0&&typeof seo !="undefined"){
+            // if(seo.title){
+            //     columns += `,seoTitle`
+            //     values += `,"${seo.title}"`
+            // }
+            // if(seo.title){
+            //     columns += `,seoKeywords`
+            //     values += `,"${seo.keywords}"`
+            // }
+            // if(seo.title){
+            //     columns += `,seoDesc`
+            //     values += `,"${seo.description}"`
+            // }
             columns += `,seoTitle,seoKeywords,seoDesc`
-            values += `,"${seo.title||""}","${seo.keywords||""}","${seo.description||""}"`
+            values += `,"${seo.title||''}","${seo.keywords||''}","${seo.description||''}"`
         }
         console.log(columns, values)
         let sql = `
@@ -145,9 +159,9 @@ export class ListResolver {
             //console.log([key, value]); // ['a', 1], ['b', 2], ['c', 3]
         }
         if(isSeo>0&&typeof seo !="undefined"){
-            setSql.push(`seoTitle="${seo.title}||""`)
-            setSql.push(`seoKeywords="${seo.keywords}||""`)
-            setSql.push(`seoDesc="${seo.description}||""`)
+            setSql.push(`seoTitle="${seo.title||""}"`)
+            setSql.push(`seoKeywords="${seo.keywords||""}"`)
+            setSql.push(`seoDesc="${seo.description||""}"`)
         }
           console.log(setSql)
 
@@ -266,15 +280,15 @@ export class ListResolver {
         let hasMore = page < totalPage
         // console.log(data)
         let result = data.map((item: any) => {
-            console.log(item)
+            //console.log(item)
             const { id, title, projectId, categoryId, createdAt, ...other } = item
-
+            let createTime = dayjs(createdAt).format('YYYY-MM-DD HH:mm:ss')
             // let other = JSON.stringify(others)
-
+            console.log(createTime)
             // console.log(other)
-            return { id, title, projectId, categoryId, createdAt, other }
+            return { id, title, projectId, categoryId, createdAt,createTime, other }
         })
-        console.log(result)
+        //console.log(result)
 
         return { lists: result, limit, page, hasMore, total, totalPage }
     }
