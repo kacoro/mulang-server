@@ -1,5 +1,5 @@
 import { List } from "../entities/List";
-import { Resolver, Query, Arg, Int, Mutation, ObjectType, Field, UseMiddleware, } from "type-graphql";
+import { Resolver, Query, Arg, Int, Mutation, ObjectType, Field, UseMiddleware, Ctx, } from "type-graphql";
 import dayjs from "dayjs"
 import { getManager } from "typeorm";
 // import GraphQLJSON, { GraphQLJSONObject } from 'graphql-type-json'
@@ -7,6 +7,8 @@ import GraphQLJSON from 'graphql-type-json'
 import { Project } from "../entities/Project";
 import { Seo } from "../entities/Seo";
 import { isAuth } from "../middleware/isAuth";
+import { MyContext } from "../types";
+import { User } from "../entities/User";
 
 // import { createUnionType } from "type-graphql";
 
@@ -63,19 +65,34 @@ class Paginated {
 export class ListResolver {
     
     @Mutation(() => Boolean)
-    @UseMiddleware(isAuth)
+    // @UseMiddleware(isAuth)
     async createList(
         //@Arg('moduleId', () => Int, { nullable: true }) moduleId: number,
         //@Arg('projectId', () => Int, { nullable: true }) projectId: number,
         @Arg('projectIdentifier', () => String) projectIdentifier: string,
         @Arg('json', () => GraphQLJSON) json: JSON,
         @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
+        @Ctx() {req}:MyContext
     ) {
 
         const project = await Project.findOne({ identifier: projectIdentifier });
         if (!project) {
             return false
         }
+        
+        //判断是否允许前台发布 isFront //如果不允许则需要验证用户是否登录
+        if(!project.isFront){
+            if (!req.session.userId) {
+                console.log('not authenticated', req.session.userId)
+                throw new Error('not authenticated')
+            }
+             const user = await User.findOne({ id: req.session.userId });
+             if (!user) {
+                 throw new Error('not authenticated')
+             }
+        }
+
+
         const {moduleId,id:projectId,isSeo} = project
         //更严谨的应该从模块中读取字段列
         let columns = `projectId`

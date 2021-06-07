@@ -101,7 +101,7 @@ export class FieldResolver {
     @UseMiddleware(isAuth)
     async deleteField(
         @Arg("id", () => Int) id: number,
-        @Ctx() { }: MyContext
+        @Ctx() {loaders }: MyContext
     ): Promise<boolean> {
         //删除字段的时候需要处理相应的数据列
         const manager = getManager();
@@ -109,8 +109,8 @@ export class FieldResolver {
         if (data?.moduleId) {
             let sql = `ALTER TABLE list_${data.moduleId} Drop ${data.identifier} `
             await manager.query(sql);
-
         }
+        loaders.FieldLoader.clear(id)  
         //删除字段时需要删除module的layout和project的listFields
 
         await Field.delete({ id })
@@ -134,7 +134,7 @@ export class FieldResolver {
         @Arg('isFront', () => Boolean, { nullable: true }) isFront: boolean,
         @Arg('search', () => Int, { nullable: true }) search: number,
         @Arg('searchSeparaStor', () => String, { nullable: true }) searchSeparaStor: string,
-        @Ctx() { }: MyContext
+        @Ctx() {loaders }: MyContext
     ): Promise<Field | null> {
         let condition = {} //管理员不需要过滤
         if (typeof title != "undefined") {
@@ -177,7 +177,8 @@ export class FieldResolver {
         if (typeof searchSeparaStor != "undefined") {
             condition = Object.assign(condition, { searchSeparaStor })
         }
-
+        //更新的时候清楚缓存
+        loaders.FieldLoader.clear(id)  
         const result = await Field.update({
             id
         }, condition)

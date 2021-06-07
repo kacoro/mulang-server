@@ -36,6 +36,7 @@ export class ProjectResolver {
         @Root() project: Project,
          @Ctx() {loaders}:MyContext
     ): Promise<Field[]|null> {
+         
        // return Field.find({where:{moduleId:project.moduleId},order:{sort:"ASC"}})
       return loaders.FieldLoader.load(project.moduleId)
     } 
@@ -71,6 +72,7 @@ export class ProjectResolver {
         @Arg('note', () => String, { nullable: true }) note: string,
         @Arg('listFields', () => String, { nullable: true }) listFields: string,
         @Arg('isSeo', () => Int, { nullable: true }) isSeo: number,
+        @Arg('isFront', () => Boolean, { nullable: true }) isFront: boolean,
         @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
         // @Arg('table', () => String, { nullable: true }) table: string,
         @Ctx() { }: MyContext
@@ -85,7 +87,7 @@ export class ProjectResolver {
         csub.moduleId = moduleId;
         csub.categoryId = categoryId;
         csub.listFields = listFields
-        
+        csub.isFront = isFront
         const module =  await manager.findOne(Module, {id:moduleId});
         if(typeof isSeo !="undefined"){
             csub.isSeo = isSeo
@@ -161,6 +163,7 @@ export class ProjectResolver {
         @Arg('status', () => Int, { nullable: true }) status: number,
         @Arg('note', () => String, { nullable: true }) note: string,
         @Arg('isSeo', () => Int, { nullable: true }) isSeo: number,
+        @Arg('isFront', () => Boolean, { nullable: true }) isFront: boolean,
         @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
         @Arg('listFields', () => String, { nullable: true }) listFields: string,
         @Ctx() {  }: MyContext
@@ -186,6 +189,9 @@ export class ProjectResolver {
         }
         if(typeof status !="undefined"){
             condition = Object.assign(condition, { status })
+        }
+        if(typeof isFront !="undefined"){
+            condition = Object.assign(condition, { isFront })
         }
         if(typeof listFields !="undefined"){
             condition = Object.assign(condition, { listFields })

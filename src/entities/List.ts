@@ -17,7 +17,7 @@ export class List  {
   @Field(() => Int)
   projectId:number;
 
-  @Field(() => Int)
+  @Field(() => Int,{nullable:true})
   categoryId: number;
 
   @Field(()=> String,{nullable:true})

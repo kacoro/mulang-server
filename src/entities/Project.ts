@@ -190,8 +190,9 @@ export class Project extends BaseEntity {
   style:string
 
   @Field()
-  @Column({comment:"是否直接访问前台",default:""})
-  isFront:string
+  @Column({comment:"是否直接访问前台",default:false})
+  isFront:boolean
+
   @Field()
   @Column({comment:"0接口不可访问，1可访问",default:""})
   isApi :string
