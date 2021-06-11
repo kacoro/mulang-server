@@ -24,10 +24,13 @@ export class FieldResolver {
         @Arg('searchSeparaStor', () => String, { nullable: true }) searchSeparaStor: string,
 
         // @Arg('table', () => String, { nullable: true }) table: string,
-        @Ctx() { }: MyContext
+        @Ctx() { 
+            loaders
+        }: MyContext
     ): Promise<Field> { //: Promise<Post[]>
         let csub = new Field();
         const manager = getManager();
+
         csub = Object.assign(csub, { moduleId, title, identifier, note, type, formType, formExt, format, sort, onlyone, content, isFront, search, searchSeparaStor })
 
         if (moduleId) {
@@ -57,6 +60,7 @@ export class FieldResolver {
             }
             await manager.query(sql);
         }
+        loaders.FieldLoader.clearAll()
         const data = await manager.save(csub)
         return data;
     }
@@ -110,7 +114,7 @@ export class FieldResolver {
             let sql = `ALTER TABLE list_${data.moduleId} Drop ${data.identifier} `
             await manager.query(sql);
         }
-        loaders.FieldLoader.clear(id)  
+        loaders.FieldLoader.clearAll()  
         //删除字段时需要删除module的layout和project的listFields
 
         await Field.delete({ id })
@@ -178,7 +182,10 @@ export class FieldResolver {
             condition = Object.assign(condition, { searchSeparaStor })
         }
         //更新的时候清楚缓存
-        loaders.FieldLoader.clear(id)  
+        loaders.FieldLoader.clearAll() 
+        // loaders.FieldLoader.loadMany() 
+        // const new2 = await loaders.FieldLoader.load(id)
+        
         const result = await Field.update({
             id
         }, condition)

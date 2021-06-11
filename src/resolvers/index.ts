@@ -10,6 +10,8 @@ import { ListResolver } from "./list";
 import { SiteResolver } from "./site";
 import { OptionResolver } from "./option";
 import { OptionGroupResolver } from "./optionGroup";
+import { MenuResolver } from "./menu";
+import { MenuGroupResolver } from "./menuGroup";
 export const resolvers = [
     HelloResolver, 
     FieldResolver,
@@ -22,7 +24,9 @@ export const resolvers = [
     ListResolver,
     SiteResolver,
     OptionResolver,
-    OptionGroupResolver
+    OptionGroupResolver,
+    MenuResolver,
+    MenuGroupResolver
 ]  as const
 
    

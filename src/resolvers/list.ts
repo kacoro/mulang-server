@@ -9,6 +9,8 @@ import { Seo } from "../entities/Seo";
 import { isAuth } from "../middleware/isAuth";
 import { MyContext } from "../types";
 import { User } from "../entities/User";
+import { Category } from "../entities/Category";
+import findTreeIds from "../utils/treetoArray";
 
 // import { createUnionType } from "type-graphql";
 
@@ -64,20 +66,25 @@ class Paginated {
 @Resolver(List)
 export class ListResolver {
     
-    @Mutation(() => Boolean)
+    @Mutation(() => Int,{nullable:true})
     // @UseMiddleware(isAuth)
     async createList(
         //@Arg('moduleId', () => Int, { nullable: true }) moduleId: number,
-        //@Arg('projectId', () => Int, { nullable: true }) projectId: number,
-        @Arg('projectIdentifier', () => String) projectIdentifier: string,
+        @Arg('projectId', () => Int, { nullable: true }) projectId: number,
+        @Arg('projectIdentifier', () => String, { nullable: true }) projectIdentifier: string,
         @Arg('json', () => GraphQLJSON) json: JSON,
         @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
         @Ctx() {req}:MyContext
-    ) {
-
-        const project = await Project.findOne({ identifier: projectIdentifier });
+    ):Promise<number|null> {
+        let project = null
+        if(projectId){
+            project = await Project.findOne({ id: projectId });
+        }else if(projectIdentifier){
+            project = await Project.findOne({ identifier: projectIdentifier });
+        }
+         
         if (!project) {
-            return false
+            return null
         }
         
         //判断是否允许前台发布 isFront //如果不允许则需要验证用户是否登录
@@ -92,8 +99,8 @@ export class ListResolver {
              }
         }
 
-
-        const {moduleId,id:projectId,isSeo} = project
+        const {moduleId,id,isSeo} = project
+        projectId = id
         //更严谨的应该从模块中读取字段列
         let columns = `projectId`
         let values = `${projectId}`
@@ -130,8 +137,12 @@ export class ListResolver {
           (${values})
           `
         const manager = getManager();
-        await manager.query(sql)
-        return true
+        const result = await manager.query(sql)
+        if(result?.insertId){
+            return result.insertId
+        }else{
+            return null
+        }
     }
 
     @Mutation(() => Boolean)
@@ -140,11 +151,17 @@ export class ListResolver {
         @Arg('id', () => Int) id: number,
         @Arg('projectIdentifier', () => String, { nullable: true }) projectIdentifier: string,
         // @Arg('moduleId', () => Int, { nullable: true }) moduleId: number,
-        // @Arg('projectId', () => Int) projectId: number,
+         @Arg('projectId', () => Int, { nullable: true }) projectId: number,
         @Arg('json', () => GraphQLJSON) json: JSON,
         @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
     ) {
-        const project = await Project.findOne({ identifier: projectIdentifier });
+        let project = null
+        if(projectId){
+            project = await Project.findOne({ id: projectId });
+        }else if(projectIdentifier){
+            project = await Project.findOne({ identifier: projectIdentifier });
+        }
+        
         if(!project){
             return false
         }
@@ -245,6 +262,47 @@ export class ListResolver {
         return true;
     }
 
+    @Query(() =>[List])
+    async listsByIds(
+        @Arg('ids', () => String) ids: string,
+        @Arg('projectId', () => Int, { nullable: true }) projectId: number,
+        @Arg('projectIdentifier', () => String, { nullable: true }) projectIdentifier: string,
+    ):Promise<List[]|null>{
+        if(!ids) return []
+        let project = null
+        if(projectId){
+            project = await Project.findOne({ id: projectId });
+        }else if(projectIdentifier){
+            project = await Project.findOne({ identifier: projectIdentifier });
+        }
+        if(!project) return []
+        let whereSql = `WHERE `;
+        let columnSql = 'id,title,projectId,categoryId,createdAt'
+        const {moduleId,listFields} = project     
+        // whereSql += `projectId = ${projectId}`
+        const manager = getManager();
+        if(listFields){
+            columnSql += `,${listFields}`
+        }
+        // whereSql += ` find_in_set(id,${ids})`
+        whereSql += `id in (${ids})`
+        let orderSql = `ORDER BY id desc`
+        let sql = `SELECT ${columnSql} FROM list_${moduleId} ${whereSql} ${orderSql}`
+        const data = await manager.query(sql)
+        
+        let result = data.map((item: any) => {
+            //console.log(item)
+            const { id, title, projectId, categoryId, createdAt, ...other } = item
+            let createTime = dayjs(createdAt).format('YYYY-MM-DD HH:mm:ss')
+            // let other = JSON.stringify(others)
+            console.log(createTime)
+            // console.log(other)
+            return { id, title, projectId, categoryId, createdAt,createTime, other }
+        })
+
+        return result
+    }   
+
     @Query(() => Paginated,{nullable:true})
     async lists(
         //@Arg('moduleId', () => Int, { nullable: true }) moduleId: number,
@@ -252,15 +310,17 @@ export class ListResolver {
         //@Arg('projectId', () => Int, { nullable: true }) projectId: number,
         @Arg('categoryId', () => Int, { nullable: true }) categoryId: number,
         @Arg('limit', () => Int, { nullable: true }) limit: number = 20,
-        @Arg("page", () => Int, { nullable: true }) page: number = 1,
+        @Arg("page", () => Int, { nullable: true }) page: number = 1
     ): Promise<Paginated | null> {
         let whereSql = `WHERE `;
         let columnSql = 'id,title,projectId,categoryId,createdAt'
+        
         const project = await Project.findOne({ identifier: identifier });
         if(!project) return null
         const {moduleId,id:projectId} = project 
-        console.log(moduleId)
-        whereSql += `projectId = ${projectId}`
+      
+        whereSql += `projectId = ${projectId} `
+       
         //子查询优化
         //根据id来查询项目，模型
         const realLimit = Math.min(100, limit);
@@ -268,8 +328,29 @@ export class ListResolver {
         const manager = getManager();
 
         if (categoryId) {
-            whereSql += ` AND categoryId = ${categoryId}`
+            //whereSql += ` AND categoryId = ${categoryId}`
+            let cateSql = ` AND categoryId = ${categoryId}`
+            //找到该分类下的子分类
+            const parentCategory = await Category.findOne({id:categoryId})
+            if(parentCategory){
+                let cate = await manager.getTreeRepository(Category).findDescendantsTree(parentCategory);
+                
+                console.log("cate:",cate)
+                if(cate){
+                //    let idsArr =  cate.children.map(item=>{return item.id})
+                //    idsArr.push(categoryId)
+                let idsArr = findTreeIds(cate)
+                console.log(idsArr)
+                   let ids = idsArr.join(',')
+                   cateSql = ` AND categoryId in (${ids})`
+                }
+            }
+            whereSql +=cateSql
+           
         }
+
+        console.log(whereSql)
+        
         let offset = (page - 1) * realLimit;
         let total = 0;
 
@@ -293,7 +374,7 @@ export class ListResolver {
         // [LIMIT N][ OFFSET M]
         //let totalPage = Math.ceil((total +realLimit - 1) / realLimit);
         let totalPage = Math.ceil((total) / realLimit);
-        console.log(total, realLimit, totalPage)
+        // console.log(total, realLimit, totalPage)
         let hasMore = page < totalPage
         // console.log(data)
         let result = data.map((item: any) => {
@@ -301,7 +382,7 @@ export class ListResolver {
             const { id, title, projectId, categoryId, createdAt, ...other } = item
             let createTime = dayjs(createdAt).format('YYYY-MM-DD HH:mm:ss')
             // let other = JSON.stringify(others)
-            console.log(createTime)
+            // console.log(createTime)
             // console.log(other)
             return { id, title, projectId, categoryId, createdAt,createTime, other }
         })
