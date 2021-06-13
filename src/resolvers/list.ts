@@ -185,7 +185,7 @@ export class ListResolver {
             const manager = getManager();
             const data = await manager.query(sql)
             console.log(data)
-            return 0
+            return true
         }
 
     @Mutation(() => Boolean)
