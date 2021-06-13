@@ -119,6 +119,10 @@ export class Project extends BaseEntity {
   seoDesc :string
 
   @Field()
+  @Column({comment:"数据排序",default:""})
+  orderBy:string
+
+  @Field()
   @Column({comment:"是否启用子主题功能",default:false})
   subTopics :boolean
   @Field()

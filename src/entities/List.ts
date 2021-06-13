@@ -24,7 +24,7 @@ export class List  {
   createdAt =  new Date();
 
   @Field(()=> String,{nullable:true})
-  updateAt =  new Date();
+  updatedAt =  new Date();
 
   @Field(()=> String,{nullable:true})
   createTime:string;
@@ -41,7 +41,6 @@ export class List  {
 
   @Field(()=> String,{nullable:true})
   banner :string;
-
 
   //把其余的字段放到other，以后处理。
   @Field(() => GraphQLJSON,{nullable:true}) 

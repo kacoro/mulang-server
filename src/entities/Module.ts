@@ -27,7 +27,7 @@ export class Module extends BaseEntity {
   status:number
 
   @Field(()=> String)
-  @Column({comment:"后台字段布局",default:"hits,createdAt,sort"})
+  @Column({comment:"后台字段布局",default:""})
   layout:string;
 
   @Field()
@@ -37,6 +37,18 @@ export class Module extends BaseEntity {
   @Field()
   @Column({comment:"类型 0不使用 1启用非必填默认隐藏，2启用非必填默认显示，3启用必填,",default:false})
   isSeo: boolean;
+
+  @Field()
+  @Column({comment:"支持查看次数",default:false})
+  isHits: boolean;
+
+  @Field()
+  @Column({comment:"支持查看次数",default:false})
+  isPublishTime: boolean;
+
+  @Field()
+  @Column({comment:"支持排序",default:false})
+  isSort: boolean;
 
   @Field()
   @Column({comment:"关联主表",default:"list"}) //请选择集成环境对应的主表，目前官网仅对分类及主题进行横向扩展

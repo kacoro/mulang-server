@@ -63,7 +63,6 @@ export class MenuGroupResolver {
         if(typeof title !="undefined"){
             condition = Object.assign(condition, { title })
         }
-       
         const result = await MenuGroup.update({
             id
         }, condition)

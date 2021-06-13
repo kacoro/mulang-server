@@ -16,7 +16,7 @@ export class ModuleResolver {
         @Arg('status', () => Int, { nullable: true }) status: number,
         @Arg('table', () => String, { nullable: true }) table: string,
         @Arg('isSeo', () => Boolean, { nullable: true }) isSeo: boolean,
-        
+      
         // @Arg('table', () => String, { nullable: true }) table: string,
         @Ctx() { }: MyContext
     ): Promise<Module> { //: Promise<Post[]>
@@ -103,8 +103,12 @@ export class ModuleResolver {
         @Arg('status', () => Int, { nullable: true }) status: number,
         @Arg('table', () => String, { nullable: true }) table: string,
         @Arg('isSeo', () => Boolean, { nullable: true }) isSeo: boolean,
+        @Arg('isHits', () => Boolean, { nullable: true }) isHits: boolean,
+        @Arg('isPublishTime', () => Boolean, { nullable: true }) isPublishTime: boolean,
+        @Arg('isSort', () => Boolean, { nullable: true }) isSort: boolean,
         @Ctx() {  }: MyContext
     ): Promise<Module | null> {
+        const manager =  getManager();
         let condition = { } //管理员不需要过滤
         if(typeof title !="undefined"){
             condition = Object.assign(condition, { title })
@@ -133,12 +137,43 @@ export class ModuleResolver {
             
             condition = Object.assign(condition, { isSeo })
             //更新seo 需要改变 数据列 即添加或删除
-            const manager =  getManager();
+            
             let sql = `ALTER TABLE list_${id} `
             if(isSeo){ //为真添加
                 sql += `Add seoTitle varchar(255),Add seoKeywords varchar(255),Add seoDesc varchar(255) `
             }else{ //为假删除
                  sql += `Drop seoTitle seoKeywords seoDesc`
+            }
+            await manager.query(sql);
+        }
+        if(typeof isHits !="undefined"&&oldModule.isHits!=isHits){
+            condition = Object.assign(condition, { isHits })
+            let sql = `ALTER TABLE list_${id} `
+            if(isHits){
+                sql += `Add hits int(10) DEFAULT 0`
+            }else{
+                sql += `Drop hits`
+            }
+            await manager.query(sql);
+
+        }
+        if(typeof isPublishTime !="undefined"&&oldModule.isPublishTime!=isPublishTime){
+            condition = Object.assign(condition, { isPublishTime })
+            let sql = `ALTER TABLE list_${id} `
+            if(isPublishTime){
+                sql += `Add publishTime timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间'`
+            }else{
+                sql += `Drop publishTime`
+            }
+            await manager.query(sql);
+        }
+        if(typeof isSort !="undefined"&&oldModule.isSort!=isSort){
+            condition = Object.assign(condition, { isSort })
+            let sql = `ALTER TABLE list_${id} `
+            if(isSort){
+                sql += `Add sort Int(11) DEFAULT 0 COMMENT '排序'`
+            }else{
+                sql += `Drop sort`
             }
             await manager.query(sql);
         }

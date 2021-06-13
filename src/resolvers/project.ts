@@ -74,6 +74,7 @@ export class ProjectResolver {
         @Arg('isSeo', () => Int, { nullable: true }) isSeo: number,
         @Arg('isFront', () => Boolean, { nullable: true }) isFront: boolean,
         @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
+        @Arg('orderBy', () => String, { nullable: true }) orderBy: string,
         // @Arg('table', () => String, { nullable: true }) table: string,
         @Ctx() { }: MyContext
     ): Promise<Project|null> { //: Promise<Post[]>
@@ -88,6 +89,7 @@ export class ProjectResolver {
         csub.categoryId = categoryId;
         csub.listFields = listFields
         csub.isFront = isFront
+        csub.orderBy = orderBy
         const module =  await manager.findOne(Module, {id:moduleId});
         if(typeof isSeo !="undefined"){
             csub.isSeo = isSeo
@@ -133,7 +135,8 @@ export class ProjectResolver {
         // @Arg('id', () => Int, { nullable: true }) id: number
         @Arg('status', () => Int, { nullable: true }) status: number,
     ): Promise<Project[]> {
-        const qb = getConnection().getRepository(Project).createQueryBuilder("p")
+        const qb = getConnection().getRepository(Project).createQueryBuilder("p").orderBy({sort:"ASC"})
+
         if(typeof status !="undefined"){
             qb.where({status:status})
         }
@@ -166,6 +169,7 @@ export class ProjectResolver {
         @Arg('isFront', () => Boolean, { nullable: true }) isFront: boolean,
         @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
         @Arg('listFields', () => String, { nullable: true }) listFields: string,
+        @Arg('orderBy', () => String, { nullable: true }) orderBy: string,
         @Ctx() {  }: MyContext
     ): Promise<Project | null> {
         let condition = { } //管理员不需要过滤
@@ -195,6 +199,9 @@ export class ProjectResolver {
         }
         if(typeof listFields !="undefined"){
             condition = Object.assign(condition, { listFields })
+        }
+        if(typeof orderBy !="undefined"){
+            condition = Object.assign(condition, { orderBy })
         }
         if(typeof isSeo !="undefined"){
             condition = Object.assign(condition, { isSeo })

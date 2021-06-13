@@ -1,5 +1,5 @@
 import { List } from "../entities/List";
-import { Resolver, Query, Arg, Int, Mutation, ObjectType, Field, UseMiddleware, Ctx, } from "type-graphql";
+import { Resolver, Query, Arg, Int, Mutation, ObjectType, Field, UseMiddleware, Ctx,   } from "type-graphql";
 import dayjs from "dayjs"
 import { getManager } from "typeorm";
 // import GraphQLJSON, { GraphQLJSONObject } from 'graphql-type-json'
@@ -26,6 +26,15 @@ function toLiteral(str: string) {
 
 }
 
+@ObjectType()
+class PrevNext{
+    @Field(() => Int)
+    id :number
+
+    @Field(() => String)
+    title :number
+
+}
 
 @ObjectType()
 class Content {
@@ -35,6 +44,12 @@ class Content {
     @Field(()=>Seo,{nullable:true})
     seo:Seo|null
    
+    @Field(()=>PrevNext,{nullable:true})
+    prev?:PrevNext|null
+
+    @Field(()=>PrevNext,{nullable:true})
+    next?:PrevNext|null
+
 }
 
 
@@ -65,6 +80,7 @@ class Paginated {
 
 @Resolver(List)
 export class ListResolver {
+  
     
     @Mutation(() => Int,{nullable:true})
     // @UseMiddleware(isAuth)
@@ -146,12 +162,39 @@ export class ListResolver {
     }
 
     @Mutation(() => Boolean)
+        async updateListHits(
+            @Arg('projectIdentifier', () => String, { nullable: true }) projectIdentifier: string,
+            @Arg('projectId', () => Int, { nullable: true }) projectId: number,
+            @Arg('id', () => Int) id: number,
+        ){
+            let project = null
+            if(projectId){
+                project = await Project.findOne({ id: projectId });
+            }else if(projectIdentifier){
+                project = await Project.findOne({ identifier: projectIdentifier });
+            }
+            
+            if(!project){return false}
+            const {moduleId} = project
+      
+            if (!moduleId) {
+                return false
+            }
+            let sql = `UPDATE list_${moduleId} SET hits=hits +1  WHERE id=${id}`
+
+            const manager = getManager();
+            const data = await manager.query(sql)
+            console.log(data)
+            return 0
+        }
+
+    @Mutation(() => Boolean)
     @UseMiddleware(isAuth)
     async updateList(
         @Arg('id', () => Int) id: number,
         @Arg('projectIdentifier', () => String, { nullable: true }) projectIdentifier: string,
         // @Arg('moduleId', () => Int, { nullable: true }) moduleId: number,
-         @Arg('projectId', () => Int, { nullable: true }) projectId: number,
+        @Arg('projectId', () => Int, { nullable: true }) projectId: number,
         @Arg('json', () => GraphQLJSON) json: JSON,
         @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
     ) {
@@ -182,11 +225,18 @@ export class ListResolver {
                 setSql.push(`${key}="${date}"`)
                 continue
             }
+            if(key =="publishTime"){
+                let date = new Date(value).toISOString().slice(0, 19).replace('T', ' ');
+                //let date = new Date(value).toISOString(); 
+                setSql.push(`${key}="${date}"`)
+                continue
+            }
             if (typeof value == "string") {
                 let encodeValue = toLiteral(value)
                 setSql.push(`${key}="${encodeValue}"`)
 
             } else {
+
                 setSql.push(`${key}=${value}`)
             }
 
@@ -210,12 +260,13 @@ export class ListResolver {
     async list(
         @Arg('id', () => Int) id: number,
         @Arg('projectIdentifier', () => String) projectIdentifier: string,
+        @Arg('isPrevNext', () => Boolean,{nullable:true}) isPrevNext: boolean,
       
     ): Promise<Content | Boolean> {
         //根据id来查询项目，模型
         const project = await Project.findOne({ identifier: projectIdentifier });
        if (!project) return false
-        const {moduleId,isSeo} = project      
+        const {moduleId,isSeo,orderBy,id:projectId} = project      
         const manager = getManager();
         // const qb = getConnection().getRepository(Module).createQueryBuilder("p")
         // const data = await qb.getMany()
@@ -231,6 +282,48 @@ export class ListResolver {
                     description:seoDesc||""
                 } 
             }
+            //isPrevNext
+            if(isPrevNext){
+                let whereSql = `WHERE `;
+                whereSql += `projectId = ${projectId} `
+                let orderKey ='id'
+                //let orderSql = `ORDER BY id ASC`
+                if(orderBy){
+                    //orderSql = `ORDER BY ${orderBy}`
+                    orderKey = orderBy.split(',')[0].replace(" DESC","").replace(" ASC","")
+
+                }
+                if (other.categoryId) {
+                    //whereSql += ` AND categoryId = ${categoryId}`
+                    let cateSql = ` AND categoryId = ${other.categoryId}`
+                    whereSql +=cateSql
+                }
+
+                function getNextPrevSql(orderKey:string,params:'<'|'>') {
+                    if(orderKey=="publishTime"){
+                        //let publishTime = new Date(other[orderKey]).getTime()
+                        let publishTime = dayjs(other[orderKey]).format('YYYY-MM-DD HH:mm:ss')
+                        return  ` AND UNIX_TIMESTAMP(${orderKey}) ${params} UNIX_TIMESTAMP("${publishTime}")`
+    
+                    }else{
+                        return ` AND ${orderKey} ${params} ${other[orderKey]}`
+                    } 
+                 }
+
+                 let prevWhere = whereSql + getNextPrevSql(orderKey,'>')
+                 let nextWhere = whereSql + getNextPrevSql(orderKey,'<')
+               
+                
+                let prevSql = `SELECT id,title FROM list_${moduleId} ${prevWhere} order by ${orderKey} asc limit 1`
+                console.log(prevSql)
+                const prevData = await manager.query(prevSql)
+
+                let nextSql = `SELECT id,title FROM list_${moduleId} ${nextWhere} order by ${orderKey} desc limit 1`
+                const nextData = await manager.query(nextSql)
+                console.log(prevData[0],nextData[0])
+                return { content: other,seo,prev:prevData[0],next:nextData[0]}
+            }
+
             return { content: other,seo}
         } else {
             return false;
@@ -286,7 +379,7 @@ export class ListResolver {
         }
         // whereSql += ` find_in_set(id,${ids})`
         whereSql += `id in (${ids})`
-        let orderSql = `ORDER BY id desc`
+        let orderSql = `ORDER BY id ASC`
         let sql = `SELECT ${columnSql} FROM list_${moduleId} ${whereSql} ${orderSql}`
         const data = await manager.query(sql)
         
@@ -301,7 +394,9 @@ export class ListResolver {
         })
 
         return result
-    }   
+    } 
+    
+   
 
     @Query(() => Paginated,{nullable:true})
     async lists(
@@ -355,15 +450,17 @@ export class ListResolver {
         let total = 0;
 
         //const data =  await manager.query(`SELECT * FROM list_${moduleId} LIMIT ${limit}`)
-        let orderSql = `ORDER BY id desc`
-
+        let orderSql = `ORDER BY id ASC`
+        if(project.orderBy){
+             orderSql = `ORDER BY ${project.orderBy}`
+        }
         //子查询优化
         if(project.listFields){
             columnSql += `,${project.listFields}`
         }
         
         //let optimtSql = `and id<=(select id from list_${moduleId}  ${whereSql} ${orderSql} limit ${offset},1)`
-        let sql = `SELECT ${columnSql} FROM list_${moduleId} ${whereSql} ${orderSql} LIMIT ${offset},${realLimit}`
+        let sql = `SELECT ${columnSql} FROM list_${moduleId} l ${whereSql} ${orderSql} LIMIT ${offset},${realLimit}`
         //默认读取全部,自定义。通过读取项目的list来获取。默认 id,title,createdAt,sort
         const data = await manager.query(sql)
         let totalRes = await manager.query(`SELECT COUNT(id) FROM list_${moduleId}  ${whereSql}`)
