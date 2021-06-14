@@ -1,5 +1,5 @@
 import DataLoader from "dataloader";
-import { Module } from "../entities/Module";
+import { Module } from "../../entities/Module";
 
 // [1, 78, 8, 9]
 // [{id: 1, username: 'tim'}, {}, {}, {}]

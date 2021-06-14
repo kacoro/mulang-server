@@ -1,5 +1,5 @@
 import DataLoader from "dataloader";
-import { Field } from "../entities/Field";
+import { Field } from "../../entities/Field";
 
   // [{postId: 5, userId: 10}]
   // [{postId: 5, userId: 10, value: 1}]

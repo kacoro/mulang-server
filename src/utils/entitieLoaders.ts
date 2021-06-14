@@ -1,11 +1,13 @@
-import { createUserLoader } from "./createUserLoader";
-import { createUpdootLoader } from "./createUpdootLoader";
-import { createFieldLoader } from "./createFieldLoader";
-import { createModuleLoader } from "./createModuleLoader";
+import { createUserLoader } from "./dataLoader/createUserLoader";
+import { createUpdootLoader } from "./dataLoader/createUpdootLoader";
+import { createFieldLoader } from "./dataLoader/createFieldLoader";
+import { createModuleLoader } from "./dataLoader/createModuleLoader";
+import { projectLoader } from "./dataLoader/projectLoader";
 const entitieLoaders = {
     UpdootLoader:createUpdootLoader(),
     UserLoader:createUserLoader(),
     ModuleLoader:createModuleLoader(),
-    FieldLoader:createFieldLoader()
+    FieldLoader:createFieldLoader(),
+    projectLoader:projectLoader()
 }
-export default entitieLoaders
+export default entitieLoaders 

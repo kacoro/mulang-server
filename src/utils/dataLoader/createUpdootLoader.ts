@@ -1,4 +1,4 @@
-import { Updoot } from "../entities/Updoot";
+import { Updoot } from "../../entities/Updoot";
 import DataLoader from "dataloader";
 
 // [{postId: 5, userId: 10}]
