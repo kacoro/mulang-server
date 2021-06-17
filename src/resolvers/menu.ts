@@ -161,14 +161,14 @@ export class MenuResolver {
                         }
                         if (submenu == 'cate1') {
                             for (const cate of cates) {
-                                newMenus.push({ parentId: id, id: `id-${cate.id}`, title: cate.name, target, link:`/${projectIdentifier}?cateogryId=${cate.id}` })
+                                newMenus.push({ parentId: id, id: `id-${cate.id}`, title: cate.name, target, link:`/${projectIdentifier}?categoryId=${cate.id}` })
                             }
                         } else if (submenu == 'cate2') {
                             for (const cate of cates) {
-                                newMenus.push({ parentId: id, id: `id-${cate.id}`, title: cate.name, target, link:`/${projectIdentifier}?cateogryId=${cate.id}` })
+                                newMenus.push({ parentId: id, id: `id-${cate.id}`, title: cate.name, target, link:`/${projectIdentifier}?categoryId=${cate.id}` })
 
                                 for (const child of cate.children) {
-                                    newMenus.push({ parentId: `id-${cate.id}`, id: `id-${cate.id}-${child.id}`, title: child.name, target, link:`/${projectIdentifier}?cateogryId=${child.id}` })
+                                    newMenus.push({ parentId: `id-${cate.id}`, id: `id-${cate.id}-${child.id}`, title: child.name, target, link:`/${projectIdentifier}?categoryId=${child.id}` })
                                 }
                             }
                         } else if (submenu == 'title1') {//读取主题
@@ -182,7 +182,7 @@ export class MenuResolver {
                         } else if (submenu == 'cate_title') {
 
                             for (const cate of cates) {
-                                newMenus.push({ parentId: id, id: `id-${cate.id}`, title: cate.name, target,  link:`/${projectIdentifier}?cateogryId=${cate.id}` })
+                                newMenus.push({ parentId: id, id: `id-${cate.id}`, title: cate.name, target,  link:`/${projectIdentifier}?categoryId=${cate.id}` })
                                 let lists = await new ListResolver().lists(projectIdentifier, cate.id, 5)
                                 if (lists?.lists)
                                     for (const list of lists.lists) {

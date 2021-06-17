@@ -1,5 +1,5 @@
 import { List } from "../entities/List";
-import { Resolver, Query, Arg, Int, Mutation, ObjectType, Field, UseMiddleware, Ctx,   } from "type-graphql";
+import { Resolver, Query, Arg, Int, Mutation, ObjectType, Field, UseMiddleware, Ctx, FieldResolver, Root, } from "type-graphql";
 import dayjs from "dayjs"
 import { getManager } from "typeorm";
 // import GraphQLJSON, { GraphQLJSONObject } from 'graphql-type-json'
@@ -11,29 +11,32 @@ import { MyContext } from "../types";
 import { User } from "../entities/User";
 import { Category } from "../entities/Category";
 import findTreeIds from "../utils/treetoArray";
-
+import { convert } from 'html-to-text';
 // import { createUnionType } from "type-graphql";
 
 interface dictType {
-    [key: string]:string,
+    [key: string]: string,
 }
 
 function toLiteral(str: string) {
     var dict = { '\b': 'b', '\t': 't', '\n': 'n', '\v': 'v', '\f': 'f', '\r': 'r' } as dictType;
-    return str.replace(/([\\'"\b\t\n\v\f\r])/g, function(_$0: any, $1: string ) {
+    return str.replace(/([\\'"\b\t\n\v\f\r])/g, function (_$0: any, $1: string) {
         return '\\' + (dict[$1] || $1);
     });
 
 }
 
 @ObjectType()
-class PrevNext{
+class PrevNext {
     @Field(() => Int)
-    id :number
+    id: number
 
     @Field(() => String)
-    title :number
+    title: number
 
+    @Field(() => String)
+    publishTime:string
+    
 }
 
 @ObjectType()
@@ -41,14 +44,14 @@ class Content {
     @Field(() => GraphQLJSON)
     content: JSON
 
-    @Field(()=>Seo,{nullable:true})
-    seo:Seo|null
-   
-    @Field(()=>PrevNext,{nullable:true})
-    prev?:PrevNext|null
+    @Field(() => Seo, { nullable: true })
+    seo: Seo | null
 
-    @Field(()=>PrevNext,{nullable:true})
-    next?:PrevNext|null
+    @Field(() => PrevNext, { nullable: true })
+    prev?: PrevNext | null
+
+    @Field(() => PrevNext, { nullable: true })
+    next?: PrevNext | null
 
 }
 
@@ -80,9 +83,48 @@ class Paginated {
 
 @Resolver(List)
 export class ListResolver {
-  
-    
-    @Mutation(() => Int,{nullable:true})
+
+    @FieldResolver(() => String, { nullable: true })
+    imgSnippet(
+        @Root() root: any
+    ): string | null {
+
+        // var reg = /<img.+?src=('|")?([^'"]+)('|")?(?:\s+|>)/gim;
+        // var imgsrcArr = [];
+        // while (let tem = reg.exec(htmlstr)) {  
+        //     imgsrcArr.push(tem[2]);  
+        // }  
+        if (!root?.other?.thumb) {//如果不存在，从内容中截取
+            if (root?.other?.content) {
+                var data = '';
+                root?.other?.content.replace(/<img [^>]*src=['"]([^'"]+)[^>]*>/, function (_match: any, capture: string) {
+                  data = capture;
+                });
+               return data
+            }
+        }
+
+        return null
+    }
+
+    @FieldResolver(() => String, { nullable: true })
+    textSnippet(
+        @Root() root: any
+    ): string | null {
+        if (root?.other?.note) {//如果存在
+            return root.other.note.slice(0, 50)
+        } else {
+            if (root?.other?.content) {
+                //将content转成纯文本
+                let text = convert(root.other.content, { wordwrap: 50 }).slice(0, 50)
+                return text
+            }
+        }
+
+        return null
+    }
+
+    @Mutation(() => Int, { nullable: true })
     // @UseMiddleware(isAuth)
     async createList(
         //@Arg('moduleId', () => Int, { nullable: true }) moduleId: number,
@@ -90,32 +132,31 @@ export class ListResolver {
         @Arg('projectIdentifier', () => String, { nullable: true }) projectIdentifier: string,
         @Arg('json', () => GraphQLJSON) json: JSON,
         @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
-        @Ctx() {req}:MyContext
-    ):Promise<number|null> {
+        @Ctx() { req }: MyContext
+    ): Promise<number | null> {
         let project = null
-        if(projectId){
+        if (projectId) {
             project = await Project.findOne({ id: projectId });
-        }else if(projectIdentifier){
+        } else if (projectIdentifier) {
             project = await Project.findOne({ identifier: projectIdentifier });
         }
-         
+
         if (!project) {
             return null
         }
-        
+
         //判断是否允许前台发布 isFront //如果不允许则需要验证用户是否登录
-        if(!project.isFront){
+        if (!project.isFront) {
             if (!req.session.userId) {
-                console.log('not authenticated', req.session.userId)
                 throw new Error('not authenticated')
             }
-             const user = await User.findOne({ id: req.session.userId });
-             if (!user) {
-                 throw new Error('not authenticated')
-             }
+            const user = await User.findOne({ id: req.session.userId });
+            if (!user) {
+                throw new Error('not authenticated')
+            }
         }
 
-        const {moduleId,id,isSeo} = project
+        const { moduleId, id, isSeo } = project
         projectId = id
         //更严谨的应该从模块中读取字段列
         let columns = `projectId`
@@ -128,25 +169,11 @@ export class ListResolver {
             } else {
                 values += `,${value}`
             }
-            //console.log([key, value]); // ['a', 1], ['b', 2], ['c', 3]
         }
-        if(isSeo>0&&typeof seo !="undefined"){
-            // if(seo.title){
-            //     columns += `,seoTitle`
-            //     values += `,"${seo.title}"`
-            // }
-            // if(seo.title){
-            //     columns += `,seoKeywords`
-            //     values += `,"${seo.keywords}"`
-            // }
-            // if(seo.title){
-            //     columns += `,seoDesc`
-            //     values += `,"${seo.description}"`
-            // }
+        if (isSeo > 0 && typeof seo != "undefined") {
             columns += `,seoTitle,seoKeywords,seoDesc`
-            values += `,"${seo.title||''}","${seo.keywords||''}","${seo.description||''}"`
+            values += `,"${seo.title || ''}","${seo.keywords || ''}","${seo.description || ''}"`
         }
-        console.log(columns, values)
         let sql = `
           INSERT INTO  list_${moduleId} (${columns})
           VALUES
@@ -154,62 +181,60 @@ export class ListResolver {
           `
         const manager = getManager();
         const result = await manager.query(sql)
-        if(result?.insertId){
+        if (result?.insertId) {
             return result.insertId
-        }else{
+        } else {
             return null
         }
     }
 
     @Mutation(() => Boolean)
-        async updateListHits(
-            @Arg('projectIdentifier', () => String, { nullable: true }) projectIdentifier: string,
-            @Arg('projectId', () => Int, { nullable: true }) projectId: number,
-            @Arg('id', () => Int) id: number,
-        ){
-            let project = null
-            if(projectId){
-                project = await Project.findOne({ id: projectId });
-            }else if(projectIdentifier){
-                project = await Project.findOne({ identifier: projectIdentifier });
-            }
-            
-            if(!project){return false}
-            const {moduleId} = project
-      
-            if (!moduleId) {
-                return false
-            }
-            let sql = `UPDATE list_${moduleId} SET hits=hits +1  WHERE id=${id}`
-
-            const manager = getManager();
-            const data = await manager.query(sql)
-            console.log(data)
-            return true
+    async updateListHits(
+        @Arg('projectIdentifier', () => String, { nullable: true }) projectIdentifier: string,
+        @Arg('projectId', () => Int, { nullable: true }) projectId: number,
+        @Arg('id', () => Int) id: number,
+    ) {
+        let project = null
+        if (projectId) {
+            project = await Project.findOne({ id: projectId });
+        } else if (projectIdentifier) {
+            project = await Project.findOne({ identifier: projectIdentifier });
         }
+
+        if (!project) { return false }
+        const { moduleId } = project
+
+        if (!moduleId) {
+            return false
+        }
+        let sql = `UPDATE list_${moduleId} SET hits=hits +1  WHERE id=${id}`
+
+        const manager = getManager();
+        await manager.query(sql)
+        return true
+    }
 
     @Mutation(() => Boolean)
     @UseMiddleware(isAuth)
     async updateList(
         @Arg('id', () => Int) id: number,
         @Arg('projectIdentifier', () => String, { nullable: true }) projectIdentifier: string,
-        // @Arg('moduleId', () => Int, { nullable: true }) moduleId: number,
         @Arg('projectId', () => Int, { nullable: true }) projectId: number,
         @Arg('json', () => GraphQLJSON) json: JSON,
         @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
     ) {
         let project = null
-        if(projectId){
+        if (projectId) {
             project = await Project.findOne({ id: projectId });
-        }else if(projectIdentifier){
+        } else if (projectIdentifier) {
             project = await Project.findOne({ identifier: projectIdentifier });
         }
-        
-        if(!project){
+
+        if (!project) {
             return false
         }
-        const {moduleId,isSeo} = project
-      
+        const { moduleId, isSeo } = project
+
         if (!moduleId) {
             return false
         }
@@ -225,7 +250,7 @@ export class ListResolver {
                 setSql.push(`${key}="${date}"`)
                 continue
             }
-            if(key =="publishTime"){
+            if (key == "publishTime") {
                 let date = new Date(value).toISOString().slice(0, 19).replace('T', ' ');
                 //let date = new Date(value).toISOString(); 
                 setSql.push(`${key}="${date}"`)
@@ -240,14 +265,12 @@ export class ListResolver {
                 setSql.push(`${key}=${value}`)
             }
 
-            //console.log([key, value]); // ['a', 1], ['b', 2], ['c', 3]
         }
-        if(isSeo>0&&typeof seo !="undefined"){
-            setSql.push(`seoTitle="${seo.title||""}"`)
-            setSql.push(`seoKeywords="${seo.keywords||""}"`)
-            setSql.push(`seoDesc="${seo.description||""}"`)
+        if (isSeo > 0 && typeof seo != "undefined") {
+            setSql.push(`seoTitle="${seo.title || ""}"`)
+            setSql.push(`seoKeywords="${seo.keywords || ""}"`)
+            setSql.push(`seoDesc="${seo.description || ""}"`)
         }
-          console.log(setSql)
 
         let sql = `UPDATE list_${moduleId} SET ${setSql.join(",")} WHERE id=${id}`
 
@@ -256,75 +279,75 @@ export class ListResolver {
         return true
     }
     @Query(() => Content)
-    
+
     async list(
         @Arg('id', () => Int) id: number,
         @Arg('projectIdentifier', () => String) projectIdentifier: string,
-        @Arg('isPrevNext', () => Boolean,{nullable:true}) isPrevNext: boolean,
-      
+        @Arg('isPrevNext', () => Boolean, { nullable: true }) isPrevNext: boolean,
+
     ): Promise<Content | Boolean> {
         //根据id来查询项目，模型
         const project = await Project.findOne({ identifier: projectIdentifier });
-       if (!project) return false
-        const {moduleId,isSeo,orderBy,id:projectId} = project      
+        if (!project) return false
+        const { moduleId, isSeo, orderBy, id: projectId } = project
         const manager = getManager();
         // const qb = getConnection().getRepository(Module).createQueryBuilder("p")
         // const data = await qb.getMany()
         const data = await manager.query(`SELECT * FROM list_${moduleId} WHERE id = ${id} LIMIT 1`)
         if (data[0]) {
-            let result =  data[0]
-            const {seoDesc,seoKeywords,seoTitle,...other} = result
+            let result = data[0]
+            const { seoDesc, seoKeywords, seoTitle, ...other } = result
             let seo = null
-            if(isSeo>0&&(seoDesc||seoKeywords||seoTitle)){
-                seo={
-                    title:seoTitle||"",
-                    keywords:seoKeywords||"",
-                    description:seoDesc||""
-                } 
+            if (isSeo > 0 && (seoDesc || seoKeywords || seoTitle)) {
+                seo = {
+                    title: seoTitle || "",
+                    keywords: seoKeywords || "",
+                    description: seoDesc || ""
+                }
             }
             //isPrevNext
-            if(isPrevNext){
+            if (isPrevNext) {
                 let whereSql = `WHERE `;
                 whereSql += `projectId = ${projectId} `
-                let orderKey ='id'
+                let orderKey = 'id'
                 //let orderSql = `ORDER BY id ASC`
-                if(orderBy){
+                if (orderBy) {
                     //orderSql = `ORDER BY ${orderBy}`
-                    orderKey = orderBy.split(',')[0].replace(" DESC","").replace(" ASC","")
+                    orderKey = orderBy.split(',')[0].replace(" DESC", "").replace(" ASC", "")
 
                 }
                 if (other.categoryId) {
                     //whereSql += ` AND categoryId = ${categoryId}`
                     let cateSql = ` AND categoryId = ${other.categoryId}`
-                    whereSql +=cateSql
+                    whereSql += cateSql
                 }
 
-                function getNextPrevSql(orderKey:string,params:'<'|'>') {
-                    if(orderKey=="publishTime"){
+                function getNextPrevSql(orderKey: string, params: '<' | '>') {
+                    if (orderKey == "publishTime") {
                         //let publishTime = new Date(other[orderKey]).getTime()
                         let publishTime = dayjs(other[orderKey]).format('YYYY-MM-DD HH:mm:ss')
-                        return  ` AND UNIX_TIMESTAMP(${orderKey}) ${params} UNIX_TIMESTAMP("${publishTime}")`
-    
-                    }else{
-                        return ` AND ${orderKey} ${params} ${other[orderKey]}`
-                    } 
-                 }
+                        return ` AND UNIX_TIMESTAMP(${orderKey}) ${params} UNIX_TIMESTAMP("${publishTime}")`
 
-                 let prevWhere = whereSql + getNextPrevSql(orderKey,'>')
-                 let nextWhere = whereSql + getNextPrevSql(orderKey,'<')
-               
-                
-                let prevSql = `SELECT id,title FROM list_${moduleId} ${prevWhere} order by ${orderKey} asc limit 1`
-                console.log(prevSql)
+                    } else {
+                        return ` AND ${orderKey} ${params} ${other[orderKey]}`
+                    }
+                }
+
+                let prevWhere = whereSql + getNextPrevSql(orderKey, '>')
+                let nextWhere = whereSql + getNextPrevSql(orderKey, '<')
+
+
+                let prevSql = `SELECT id,title,publishTime FROM list_${moduleId} ${prevWhere} order by ${orderKey} asc limit 1`
+
                 const prevData = await manager.query(prevSql)
 
-                let nextSql = `SELECT id,title FROM list_${moduleId} ${nextWhere} order by ${orderKey} desc limit 1`
+                let nextSql = `SELECT id,title,publishTime FROM list_${moduleId} ${nextWhere} order by ${orderKey} desc limit 1`
                 const nextData = await manager.query(nextSql)
-                console.log(prevData[0],nextData[0])
-                return { content: other,seo,prev:prevData[0],next:nextData[0]}
+
+                return { content: other, seo, prev: prevData[0], next: nextData[0] }
             }
 
-            return { content: other,seo}
+            return { content: other, seo }
         } else {
             return false;
         }
@@ -350,31 +373,31 @@ export class ListResolver {
             }
         }
         const manager = getManager();
-        const data = await manager.query(`DELETE  FROM list_${moduleId} WHERE id = ${id}`)
-        console.log(data)
+        await manager.query(`DELETE  FROM list_${moduleId} WHERE id = ${id}`)
+      
         return true;
     }
 
-    @Query(() =>[List])
+    @Query(() => [List])
     async listsByIds(
         @Arg('ids', () => String) ids: string,
         @Arg('projectId', () => Int, { nullable: true }) projectId: number,
         @Arg('projectIdentifier', () => String, { nullable: true }) projectIdentifier: string,
-    ):Promise<List[]|null>{
-        if(!ids) return []
+    ): Promise<List[] | null> {
+        if (!ids) return []
         let project = null
-        if(projectId){
+        if (projectId) {
             project = await Project.findOne({ id: projectId });
-        }else if(projectIdentifier){
+        } else if (projectIdentifier) {
             project = await Project.findOne({ identifier: projectIdentifier });
         }
-        if(!project) return []
+        if (!project) return []
         let whereSql = `WHERE `;
         let columnSql = 'id,title,projectId,categoryId,createdAt'
-        const {moduleId,listFields} = project     
+        const { moduleId, listFields } = project
         // whereSql += `projectId = ${projectId}`
         const manager = getManager();
-        if(listFields){
+        if (listFields) {
             columnSql += `,${listFields}`
         }
         // whereSql += ` find_in_set(id,${ids})`
@@ -382,23 +405,23 @@ export class ListResolver {
         let orderSql = `ORDER BY id ASC`
         let sql = `SELECT ${columnSql} FROM list_${moduleId} ${whereSql} ${orderSql}`
         const data = await manager.query(sql)
-        
+
         let result = data.map((item: any) => {
             //console.log(item)
             const { id, title, projectId, categoryId, createdAt, ...other } = item
             let createTime = dayjs(createdAt).format('YYYY-MM-DD HH:mm:ss')
             // let other = JSON.stringify(others)
-            console.log(createTime)
+            
             // console.log(other)
-            return { id, title, projectId, categoryId, createdAt,createTime, other }
+            return { id, title, projectId, categoryId, createdAt, createTime, other }
         })
 
         return result
-    } 
-    
-   
+    }
 
-    @Query(() => Paginated,{nullable:true})
+
+
+    @Query(() => Paginated, { nullable: true })
     async lists(
         //@Arg('moduleId', () => Int, { nullable: true }) moduleId: number,
         @Arg('identifier', () => String) identifier: string,
@@ -409,13 +432,13 @@ export class ListResolver {
     ): Promise<Paginated | null> {
         let whereSql = `WHERE `;
         let columnSql = 'id,title,projectId,categoryId,createdAt'
-        
+
         const project = await Project.findOne({ identifier: identifier });
-        if(!project) return null
-        const {moduleId,id:projectId} = project 
-      
+        if (!project) return null
+        const { moduleId, id: projectId } = project
+
         whereSql += `projectId = ${projectId} `
-       
+
         //子查询优化
         //根据id来查询项目，模型
         const realLimit = Math.min(100, limit);
@@ -426,40 +449,38 @@ export class ListResolver {
             //whereSql += ` AND categoryId = ${categoryId}`
             let cateSql = ` AND categoryId = ${categoryId}`
             //找到该分类下的子分类
-            const parentCategory = await Category.findOne({id:categoryId})
-            if(parentCategory){
+            const parentCategory = await Category.findOne({ id: categoryId })
+            if (parentCategory) {
                 let cate = await manager.getTreeRepository(Category).findDescendantsTree(parentCategory);
-                
-                console.log("cate:",cate)
-                if(cate){
-                //    let idsArr =  cate.children.map(item=>{return item.id})
-                //    idsArr.push(categoryId)
-                let idsArr = findTreeIds(cate)
-                console.log(idsArr)
-                   let ids = idsArr.join(',')
-                   cateSql = ` AND categoryId in (${ids})`
+
+
+                if (cate) {
+                    //    let idsArr =  cate.children.map(item=>{return item.id})
+                    //    idsArr.push(categoryId)
+                    let idsArr = findTreeIds(cate)
+
+                    let ids = idsArr.join(',')
+                    cateSql = ` AND categoryId in (${ids})`
                 }
             }
-            whereSql +=cateSql
-           
+            whereSql += cateSql
+
         }
 
-        console.log(whereSql)
-        
         let offset = (page - 1) * realLimit;
         let total = 0;
 
-        //const data =  await manager.query(`SELECT * FROM list_${moduleId} LIMIT ${limit}`)
+
         let orderSql = `ORDER BY id ASC`
-        if(project.orderBy){
-             orderSql = `ORDER BY ${project.orderBy}`
+        if (project.orderBy) {
+            orderSql = `ORDER BY ${project.orderBy}`
         }
         //子查询优化
-        if(project.listFields){
+        if (project.listFields) {
             columnSql += `,${project.listFields}`
         }
-        
-        //let optimtSql = `and id<=(select id from list_${moduleId}  ${whereSql} ${orderSql} limit ${offset},1)`
+
+
         let sql = `SELECT ${columnSql} FROM list_${moduleId} l ${whereSql} ${orderSql} LIMIT ${offset},${realLimit}`
         //默认读取全部,自定义。通过读取项目的list来获取。默认 id,title,createdAt,sort
         const data = await manager.query(sql)
@@ -467,9 +488,6 @@ export class ListResolver {
 
         total = parseInt(totalRes[0]['COUNT(id)'])
 
-        // [WHERE Clause]
-        // [LIMIT N][ OFFSET M]
-        //let totalPage = Math.ceil((total +realLimit - 1) / realLimit);
         let totalPage = Math.ceil((total) / realLimit);
         // console.log(total, realLimit, totalPage)
         let hasMore = page < totalPage
@@ -481,7 +499,7 @@ export class ListResolver {
             // let other = JSON.stringify(others)
             // console.log(createTime)
             // console.log(other)
-            return { id, title, projectId, categoryId, createdAt,createTime, other }
+            return { id, title, projectId, categoryId, createdAt, createTime, other }
         })
         //console.log(result)
 
