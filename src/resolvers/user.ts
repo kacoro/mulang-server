@@ -1,6 +1,6 @@
 
 import { MyContext } from "../types";
-import { Resolver, Ctx, Arg, Mutation, Field, ObjectType, Query, FieldResolver, Root } from "type-graphql";
+import { Resolver, Ctx, Arg, Mutation, Field, ObjectType, Query, FieldResolver, Root, UseMiddleware } from "type-graphql";
 import { User } from "../entities/User";
 import argon2 from 'argon2'
 import { sendEmail } from "../utils/sendEmail";
@@ -8,6 +8,7 @@ import { UsernamePasswordInput } from "../types/UsernamePasswordInput";
 import { validateRegister } from "../utils/validateRegister";
 import { v4 } from 'uuid'
 import { FOGET_PASSWORD_PREFIX } from "../constants";
+import { isAuth } from "../middleware/isAuth";
 
 
 
@@ -38,10 +39,70 @@ export class UserResolver {
         }
         // current user wants to see someone else email
         return "";
-
     }
-
     @Mutation(() => UserResponse)
+    @UseMiddleware(isAuth)
+    async resetPassword(
+        @Arg('oldPassword') oldPassword: string,
+        @Arg('newPassword') newPassword: string,
+        @Ctx() {  req }: MyContext
+    ): Promise<UserResponse> {
+        if(oldPassword==newPassword){
+            return {
+                errors: [{
+                    field: "newPassword",
+                    message: "新旧密码是一样的，不能执行此操作"
+                }]
+            } 
+        }
+        if (newPassword.length <= 3) {
+            return {
+                errors: [{
+                    field: "newPassword",
+                    message: "length must be greater than 3"
+                }]
+            }
+        }
+
+        const userId = req.session.userId
+        if (!userId) {
+            return {
+                errors: [{
+                    field: "token",
+                    message: "token expired"
+                }]
+            }
+        }
+       
+        const user = await User.findOne({ id: userId });
+        if (!user) {
+            return {
+                errors: [{
+                    field: "token",
+                    message: "user no longer exists"
+                }]
+            }
+        }
+        const {password} = user
+       
+        let valid =  await argon2.verify(password, oldPassword);
+     
+        if(!valid){
+            return {
+                errors: [{
+                    field: "oldPassword",
+                    message: "密码不正确"
+                }]
+            } 
+        }
+        const hashNewPassword = await argon2.hash(newPassword)
+      
+        User.update({ id: userId }, { password: hashNewPassword })
+
+        return { user }
+    }
+    @Mutation(() => UserResponse)
+   
     async changePassword(
         @Arg('token') token: string,
         @Arg('newpassword') newpassword: string,
@@ -67,7 +128,7 @@ export class UserResolver {
             }
         }
         const userIdNum = parseInt(userId)
-        const user = await User.findOne({ id: userIdNum });
+        const user =  await User.findOne({ id: userIdNum });
         if (!user) {
             return {
                 errors: [{
@@ -83,7 +144,6 @@ export class UserResolver {
         req.session.userId = user.id
         console.log(req.session.userId)
         return { user }
-
     }
 
 
