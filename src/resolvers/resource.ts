@@ -1,9 +1,11 @@
 import { Resource } from "../entities/Resource";
-import { Resolver, Query, Arg, Int, Mutation, InputType, Field, Ctx, UseMiddleware, FieldResolver, Root } from "type-graphql";
+import { Resolver, Query, Arg, Int, Mutation, InputType, Field, Ctx, UseMiddleware, FieldResolver, Root, ObjectType } from "type-graphql";
 import { MyContext } from "../types";
 import { isAuth } from "../middleware/isAuth";
-import { getConnection } from "typeorm";
-
+import { getConnection, Like } from "typeorm";
+import PaginatedResponse from "../types/PaginatedResponseClass";
+import fs from 'fs'
+import path from 'path'
 @InputType()
 class ResourceInput {
     @Field()
@@ -16,7 +18,12 @@ class ResourceInput {
     text: string
 }
 
-
+@ObjectType()
+class PaginatedUserResponse extends PaginatedResponse(Resource) {
+  // we can freely add more fields or overwrite the existing one's types
+//   @Field(type => [String])
+//   otherInfo: string[];
+}
 
 @Resolver(Resource)
 export class ResourceResolver {
@@ -30,37 +37,57 @@ export class ResourceResolver {
        return loaders.UserLoader.load(res.creatorId)
     }    
 
+    @FieldResolver(() => String)
+    uploadType(
+        @Root() res: Resource,
+    ) {
+        let types = res.mimetype.split("/")
+        return types[0]||res.mimetype;
+       
+    }    
 
-    @Query(() => Resource) // ()=> [Post]
+    @Query(() => PaginatedUserResponse) // ()=> [Post]
     async resources(
-        @Arg('limit', () => Int) limit: number,
-        @Arg('cursor', () => Int, { nullable: true }) cursor: number | null,
-        @Ctx() { req }: MyContext
-    ): Promise<Resource[]> { //: Promise<Post[]>
+        @Arg('limit', () => Int,{ nullable: true }) limit: number=20,
+        @Arg('page', () => Int,{ nullable: true }) page: number =1,
+        @Arg('groupId', () => Int,{ nullable: true }) groupId: number,
+        @Arg('type', () => String,{ nullable: true }) type: string
+    ): Promise<PaginatedUserResponse> { //: Promise<Post[]>
         // 20->21
         const realLimit = Math.min(50, limit);
-        const realLimitPlusOne = realLimit + 1
-
-        const replacements: any[] = [realLimitPlusOne, req.session.userId]
-
-        if (cursor) {
-            const parseCurrsor = cursor
-            replacements.push(parseCurrsor)
+        //const realLimitPlusOne = realLimit + 1
+        let offset = (page - 1) * realLimit;
+        let total = 0;
+        const qb = getConnection().getRepository(Resource).createQueryBuilder("resource")
+       
+        let condition ={}
+        if(groupId){
+            condition = Object.assign(condition,{groupId})
+            //qb.where({groupId:groupId})
         }
-
-        const qb = getConnection().getRepository(Resource).createQueryBuilder("p")
+        if(type){
+            condition = Object.assign(condition,{mimetype:Like(`%${type}%`)})
+            
+            
+        }
+        qb.where(condition)
+        total = await qb.getCount()
             // .innerJoinAndSelect("p.creator", "u", 'u.id = p.creatorId')
-            .orderBy("p.createdAt", "DESC").take(realLimitPlusOne)
-
-        if (cursor) {
-            qb.skip(cursor)
-            // qb.where("p.createdAt < :cursor", {
-            //     cursor: new Date(parseInt(cursor))
-            // })
-        }
+           // qb.orderBy("p.createdAt", "DESC").take(realLimitPlusOne)
+           qb.take(realLimit)
+           qb.skip(offset)
         const res = await qb.getMany()
-
-        return res;
+       
+        let totalPage = Math.ceil((total) / realLimit);
+        // console.log(total, realLimit, totalPage)
+        let hasMore = page < totalPage
+        return {
+            page,
+            limit,
+            hasMore,total,totalPage,
+            items:res
+            
+        };
     }
 
     @Query(() => Resource, { nullable: true })
@@ -107,9 +134,30 @@ export class ResourceResolver {
     @UseMiddleware(isAuth)
     async deleteResource(
         @Arg("id", () => Int) id: number,
-        @Ctx() { req }: MyContext
+        // @Ctx() { req }: MyContext
     ): Promise<boolean> {
-        await Resource.delete({ id, creatorId: req.session.userId })
+       
+        let res = await Resource.findOne(id)
+        
+        if(res){
+            const pathName = path.join(__dirname, "../../public",res.url)
+            try {
+                await fs.unlinkSync(pathName)
+                // await Resource.delete({ id, creatorId: req.session.userId })
+                await Resource.delete({ id})
+                return true;
+                //file removed
+              } catch(err) {
+
+                console.log("error",err)
+                await Resource.delete({ id})
+                return false;
+              }
+        }
+        console.log(res)
+        //删除服务器的文件
+        // await Resource.delete({ id, creatorId: req.session.userId })
+        
         return true;
     }
 }

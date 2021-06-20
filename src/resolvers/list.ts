@@ -251,10 +251,14 @@ export class ListResolver {
                 continue
             }
             if (key == "publishTime") {
-                let date = new Date(value).toISOString().slice(0, 19).replace('T', ' ');
-                //let date = new Date(value).toISOString(); 
-                setSql.push(`${key}="${date}"`)
+                if(value){
+                    let date = new Date(value).toISOString().slice(0, 19).replace('T', ' ');
+                    //let date = new Date(value).toISOString(); 
+                    setSql.push(`${key}="${date}"`)
+                   
+                }
                 continue
+              
             }
             if (typeof value == "string") {
                 let encodeValue = toLiteral(value)
@@ -400,8 +404,10 @@ export class ListResolver {
         if (listFields) {
             columnSql += `,${listFields}`
         }
+        var reg=/,$/gi;
+        let filterIds = ids.replace(reg,"");
         // whereSql += ` find_in_set(id,${ids})`
-        whereSql += `id in (${ids})`
+        whereSql += `id in (${filterIds})`
         let orderSql = `ORDER BY id ASC`
         let sql = `SELECT ${columnSql} FROM list_${moduleId} ${whereSql} ${orderSql}`
         const data = await manager.query(sql)

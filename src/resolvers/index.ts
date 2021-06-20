@@ -12,6 +12,7 @@ import { OptionResolver } from "./option";
 import { OptionGroupResolver } from "./optionGroup";
 import { MenuResolver } from "./menu";
 import { MenuGroupResolver } from "./menuGroup";
+import {ResourceResolver} from "./resource"
 export const resolvers = [
     HelloResolver, 
     FieldResolver,
@@ -26,7 +27,8 @@ export const resolvers = [
     OptionResolver,
     OptionGroupResolver,
     MenuResolver,
-    MenuGroupResolver
+    MenuGroupResolver,
+    ResourceResolver
 ]  as const
 
    
