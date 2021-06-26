@@ -43,7 +43,6 @@ export class ResourceResolver {
     ) {
         let types = res.mimetype.split("/")
         return types[0]||res.mimetype;
-       
     }    
 
     @Query(() => PaginatedUserResponse) // ()=> [Post]

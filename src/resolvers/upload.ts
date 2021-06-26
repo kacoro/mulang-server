@@ -41,8 +41,6 @@ export class UploadResolver {
         @Arg("file", () => GraphQLUpload) file: FileUpload,
         @Ctx() {req }: MyContext
     ): Promise<FileResponse> {
-
-
         try {
             const { createReadStream, filename,mimetype } = await file; //createReadStream,filename,mimetype,encoding
             console.log(filename,mimetype)
