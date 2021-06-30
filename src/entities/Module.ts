@@ -34,20 +34,20 @@ export class Module extends BaseEntity {
   @Column({comment:"类型 0联合模块，1独立模块",default:0})
   type: number;
 
-  @Field()
-  @Column({comment:"类型 0不使用 1启用非必填默认隐藏，2启用非必填默认显示，3启用必填,",default:false})
+  @Field(()=>Boolean)
+  @Column({type:"bool",comment:"类型 0不使用 1启用非必填默认隐藏，2启用非必填默认显示，3启用必填,",default:false})
   isSeo: boolean;
 
-  @Field()
-  @Column({comment:"支持查看次数",default:false})
+  @Field(()=>Boolean)
+  @Column({type:"bool",comment:"支持查看次数",default:false})
   isHits: boolean;
 
-  @Field()
-  @Column({comment:"支持查看次数",default:false})
+  @Field(()=>Boolean)
+  @Column({type:"bool",comment:"支持查看次数",default:false})
   isPublishTime: boolean;
 
-  @Field()
-  @Column({comment:"支持排序",default:false})
+  @Field(()=>Boolean)
+  @Column({type:"bool",comment:"支持排序",default:false})
   isSort: boolean;
 
   @Field()

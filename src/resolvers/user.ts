@@ -180,6 +180,7 @@ export class UserResolver {
         return await User.findOne(req.session.userId)
     }
 
+    @UseMiddleware(isAuth) //禁止前台注册
     @Mutation(() => UserResponse)
     async register(
         @Arg('options') options: UsernamePasswordInput,
