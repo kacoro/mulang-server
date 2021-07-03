@@ -165,6 +165,7 @@ export class ListResolver {
             columns += `,${key}`
             if (typeof value == "string") {
                 value = toLiteral(value)
+                
                 values += `,"${value}"`
             } else {
                 values += `,${value}`
@@ -318,7 +319,6 @@ export class ListResolver {
                 if (orderBy) {
                     //orderSql = `ORDER BY ${orderBy}`
                     orderKey = orderBy.split(',')[0].replace(" DESC", "").replace(" ASC", "")
-
                 }
                 if (other.categoryId) {
                     //whereSql += ` AND categoryId = ${categoryId}`
