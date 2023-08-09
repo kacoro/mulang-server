@@ -19,9 +19,7 @@ yarn install
 create:migration
 
 #dev
-yarn dev2
-
-
+yarn dev
 
 yarn build
 
