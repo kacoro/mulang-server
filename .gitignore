@@ -8,7 +8,7 @@
 /mysql
 
 /migrations/*
-/public/upload
+/public/upload/images/*
 # misc
 .DS_Store
 
