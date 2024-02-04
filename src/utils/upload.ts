@@ -40,7 +40,7 @@ function getSuffixName( fileName:string ) {
 function uploadFile( ctx: { req: any; res: any; host: any; }, options: { fileType: string; path: string; }) {
   let req = ctx.req
   // let res = ctx.res
-  let busboy = new Busboy({headers: req.headers})
+  let busboy = Busboy({headers: req.headers})
 
   // 获取类型
   let fileType = options.fileType || 'common'

@@ -72,7 +72,7 @@ export class Resource extends BaseEntity {
   
 
   @Field()
-  @Column()
+  @Column({default:0})
   creatorId:number;
 
 }

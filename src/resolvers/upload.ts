@@ -4,7 +4,7 @@ import { MyContext } from "../types";
 import { isAuth } from "../middleware/isAuth";
 import fs from 'fs'
 import path from 'path'
-import { GraphQLUpload, FileUpload } from 'graphql-upload'
+import { GraphQLUpload,FileUpload } from '../plugins/graphql-upload'
 import { Resource } from "../entities/Resource";
 
 function generateRandomString(length: number) {

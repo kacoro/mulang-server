@@ -1,13 +1,15 @@
 {
   "compilerOptions": {
-    "target": "es6",
-    "module": "commonjs",
+    "target": "ES6",
+    "module": "CommonJS",
+    "types": ["node"],
     "lib": [
       "dom",
       "es6",
       "es2016",
       "es2017",
       "es2018",
+      "es2020",
       "esnext.asynciterable"
     ],
     "sourceMap": true,
@@ -34,6 +36,7 @@
   ],
   "include": [
     "./src/**/*.tsx",
-    "./src/**/*.ts"
+    "./src/**/*.ts",
+    "./src/plugins/**/*.ts"
   ]
 }

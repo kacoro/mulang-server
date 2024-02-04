@@ -1,26 +1,38 @@
 import "reflect-metadata";
 import 'dotenv-safe/config';
 import { COOKIE_NAME, __prod__ } from "./constants";
+console.log(COOKIE_NAME)
 import express from 'express';
-import { ApolloServer } from 'apollo-server-express';
+// import { ApolloServer } from 'apollo-server-express';
+import { ApolloServer } from '@apollo/server';
+// import { startStandaloneServer } from '@apollo/server/standalone';
+import { expressMiddleware } from '@apollo/server/express4';
+
+import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
+import http from 'http';
 import { buildSchema } from 'type-graphql';
 
 import Redis from 'ioredis';
 import session from 'express-session';
 import connectRedis from 'connect-redis'
-import { MyContext } from "./types";
+// import { MyContext } from "./types";
 import cors from 'cors';
 import { createConnection } from 'typeorm';
 import entitieLoaders from './utils/entitieLoaders';
 import typeormConfig from "./typeorm.config";
 import {resolvers} from './resolvers'
-import { graphqlUploadExpress } from "graphql-upload";
+
+// @ts-ignore
+// import graphqlUploadExpress from "grpahql-upload/graphqlUploadExpress.mjs";
+
+import { graphqlUploadExpress } from './plugins/graphql-upload'
+
 const main = async () => {
     await createConnection(typeormConfig)
     // const conn = await createConnection(typeormConfig)
     // await conn.runMigrations();
     const app = express();
-
+    const httpServer = http.createServer(app);
     const RedisStroe = connectRedis(session)
     const redis = new Redis(process.env.REDIS_URL)
     app.set('trust proxy',1);
@@ -53,29 +65,49 @@ const main = async () => {
     app.use(express.static('public'));
     app.use(graphqlUploadExpress({ maxFileSize: 20*1024*1024,maxFieldSize: 10*1024*1024, maxFiles: 10 }));
     
-    const apolloServer = new ApolloServer({
-        schema: await buildSchema({
-            resolvers:resolvers ,
-            validate: false
-        }),
-        context: ({ req, res }): MyContext => ({ req, res, redis,loaders:entitieLoaders }),
-       
-        formatError: (err) => {
-            // Don't give the specific errors to the client.
-            console.log("err",err)
-            if (err.message.startsWith("fileError")) {
-              return new Error('PayloadTooLargeError');
-            }
-            // Otherwise return the original error.  The error can also
-            // be manipulated in other ways, so long as it's returned.
-            return err;
-        },
-         uploads:false,
-        // uploads: {
-        //     maxFileSize: 10000000, // 10 MB
-        //     maxFiles: 10,
-        // },
+    const schema = await buildSchema({
+        resolvers:resolvers ,
+        validate: false
     })
+
+    const apolloServer = new ApolloServer({ schema ,plugins: [ApolloServerPluginDrainHttpServer({ httpServer })]});
+    //     const { url } = await startStandaloneServer(server, {
+    //     context: async ({ req,res }) => ({  req, res , redis,loaders:entitieLoaders}),
+        
+    //  });
+    await apolloServer.start();
+    app.use(
+        '/graphql',
+        cors<cors.CorsRequest>(),
+        express.json(),
+        expressMiddleware(apolloServer, {
+          context: async ({ req ,res}) => ({ req, res, redis,loaders:entitieLoaders,token: req.headers.token }),
+        }),
+      );
+      
+    // const apolloServer = new ApolloServer({
+    //     schema: await buildSchema({
+    //         resolvers:resolvers ,
+    //         validate: false
+    //     }),
+    //     context: ({ req, res }): MyContext => ({ req, res, redis,loaders:entitieLoaders }),
+       
+    //     formatError: (err) => {
+    //         // Don't give the specific errors to the client.
+    //         console.log("err",err)
+    //         if (err.message.startsWith("fileError")) {
+    //           return new Error('PayloadTooLargeError');
+    //         }
+    //         // Otherwise return the original error.  The error can also
+    //         // be manipulated in other ways, so long as it's returned.
+    //         return err;
+    //     },
+    //      uploads:false,
+    //     // uploads: {
+    //     //     maxFileSize: 10000000, // 10 MB
+    //     //     maxFiles: 10,
+    //     // },
+    // })
    
     process.on('uncaughtException', function (err) {
         //打印出错误
@@ -93,17 +125,19 @@ const main = async () => {
     //     res.status(500).send('Something broke!');
     // }
     //  app.use(errorHandler);
-    apolloServer.applyMiddleware({
-        app,
-        bodyParserConfig: {
-            limit: "10mb"
-            },
-        cors: false
-    });
+    // apolloServer.applyMiddleware({
+    //     app,
+    //     bodyParserConfig: {
+    //         limit: "10mb"
+    //         },
+    //     cors: false
+    // });
 
-    app.listen(process.env.PORT, () => {
-        console.log('server started on localhost:'+process.env.PORT)
-    })
+    // app.listen(process.env.PORT, () => {
+    //     console.log('server started on localhost:'+process.env.PORT)
+    // })
+
+    await new Promise<void>((resolve) => httpServer.listen({ port: process.env.PORT }, resolve));
 }
 
 main().catch((err) => {

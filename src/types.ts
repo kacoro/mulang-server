@@ -18,5 +18,7 @@ export type MyContext = {
     //     ModuleLoader:ReturnType<typeof createModuleLoader>,
     //     FieldLoader:ReturnType<typeof createFieldLoader>
     // }
-    loaders:typeof loaders
+    loaders:typeof loaders,
+    token?: String;
 }
+
