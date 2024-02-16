@@ -1,26 +1,29 @@
-import { GraphQLScalarType } from 'graphql';
-import { Kind } from 'graphql/language';
+import { GraphQLScalarType, Kind } from 'graphql';
 
-export default new GraphQLScalarType({
-  name: 'Datetime',
-  description: 'GraphQL 日期时间标量类型',
-  // 序列化函数
-  // 用于将值转换为适合http传输的数据，一般为字符串
+const dateScalar = new GraphQLScalarType({
+  name: 'Date',
+  description: 'Date custom scalar type',
   serialize(value) {
-    // return value.toLocaleString();
-    return value.toString();
-  },
-  // 解析函数
-  // 将客户端通过 **variables** 参数传递的数值为 Date 类型
-  parseValue(value) {
-    return new Date(value);
-  },
-  // 解析函数
-  // 将客户端传递的 **字面量参数** 解析为 Date 类型
-  parseLiteral(ast) {
-    if (ast.kind === Kind.STRING) {
-      return new Date(ast.value);
+    if (value instanceof Date) {
+      return value.getTime(); // Convert outgoing Date to integer for JSON
     }
-    throw new Error(`参数类型有误： ${ast.kind}， 应当传递 "String" 值`);
-  }
+    throw Error('GraphQL Date Scalar serializer expected a `Date` object');
+  },
+  parseValue(value) {
+    if (typeof value === 'number') {
+      return new Date(value); // Convert incoming integer to Date
+    }
+    throw new Error('GraphQL Date Scalar parser expected a `number`');
+  },
+  parseLiteral(ast) {
+    if (ast.kind === Kind.INT) {
+      // Convert hard-coded AST string to integer and then to Date
+      return new Date(parseInt(ast.value, 10));
+    }
+    // Invalid hard-coded value (not an integer)
+    return null;
+  },
 });
+
+
+export default dateScalar

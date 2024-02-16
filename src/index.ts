@@ -17,7 +17,7 @@ import session from 'express-session';
 import connectRedis from 'connect-redis'
 // import { MyContext } from "./types";
 import cors from 'cors';
-import { createConnection } from 'typeorm';
+import { DataSource  } from 'typeorm';
 import entitieLoaders from './utils/entitieLoaders';
 import typeormConfig from "./typeorm.config";
 import {resolvers} from './resolvers'
@@ -26,15 +26,19 @@ import {resolvers} from './resolvers'
 // import graphqlUploadExpress from "grpahql-upload/graphqlUploadExpress.mjs";
 
 import { graphqlUploadExpress } from './plugins/graphql-upload'
-
+export const AppDataSource = new DataSource (typeormConfig)
+export const Manager = AppDataSource.manager
 const main = async () => {
-    await createConnection(typeormConfig)
+   
+    await AppDataSource.initialize()
     // const conn = await createConnection(typeormConfig)
     // await conn.runMigrations();
     const app = express();
     const httpServer = http.createServer(app);
     const RedisStroe = connectRedis(session)
-    const redis = new Redis(process.env.REDIS_URL)
+    console.log(process.env.REDIS_URL||9978)
+    const redis = new Redis({port:Number(process.env.REDIS_PORT)})
+    
     app.set('trust proxy',1);
     app.use(cors({
         origin: process.env.CORS_ORIGIN?.split(","),
@@ -120,11 +124,11 @@ const main = async () => {
     
     })
    
-    // const errorHandler = (err:Error, res: any)=> {
-    //     console.error(err.);
-    //     res.status(500).send('Something broke!');
-    // }
-    //  app.use(errorHandler);
+    const errorHandler = (err:Error, res: any)=> {
+        console.error(err);
+        res.status(500).send('Something broke!');
+    }
+     app.use(errorHandler);
     // apolloServer.applyMiddleware({
     //     app,
     //     bodyParserConfig: {
@@ -137,7 +141,10 @@ const main = async () => {
     //     console.log('server started on localhost:'+process.env.PORT)
     // })
 
-    await new Promise<void>((resolve) => httpServer.listen({ port: process.env.PORT }, resolve));
+    await new Promise<void>((resolve) => httpServer.listen({ port: process.env.PORT }, ()=>{
+        console.log('server started on localhost:'+process.env.PORT)
+        resolve
+    }));
 }
 
 main().catch((err) => {

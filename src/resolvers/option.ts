@@ -1,6 +1,6 @@
 import { Resolver, Arg, Int, Mutation, Ctx, Query,  UseMiddleware, FieldResolver, Root } from "type-graphql";
 import { MyContext } from "../types";
-import { getConnection, getManager } from "typeorm";
+import {AppDataSource,Manager} from "../index"
 import { Option } from "../entities/Option";
 import { isAuth } from "../middleware/isAuth";
 import { OptionGroup } from "../entities/OptionGroup";
@@ -24,17 +24,15 @@ export class OptionResolver {
         @Arg('sort', () => Int,{nullable:true}) sort: number,
         @Ctx() { }: MyContext
     ): Promise<Option|Boolean> { //: Promise<Post[]>
-        const optionGroup = await OptionGroup.findOne({id:groupId})
+        const optionGroup = await OptionGroup.findOneBy({id:groupId})
         if(!optionGroup) return false
         const csub = new Option();
-        const manager = getManager();
-        
         csub.title = title;
         csub.value = value;
         csub.sort = sort;
         csub.groupId = groupId;
         if(parentId){
-            const parent = await Option.findOne({id:parentId})
+            const parent = await Option.findOneBy({id:parentId})
             if(parent){
                 csub.parentId = parentId;
                 csub.parent = parent;
@@ -43,19 +41,19 @@ export class OptionResolver {
         
         csub.group = optionGroup
         console.log(csub)
-        return await manager.save(csub);
+        return await Manager.save(csub);
     }
 
     @Query(() => Option, { nullable: true })
     async option(
         @Arg('id', () => Int, { nullable: true }) id: number,
      
-    ): Promise<Option | undefined> {
+    ): Promise<Option | null> {
         // return Post.findOne(id, { relations: ["creator"] });
         if(id){
-            return await Option.findOne(id,{ relations: ["children"]});
+            return await Option.findOne({where:{id}, relations:{children:true}});
         } else{
-            return undefined
+            return null
         }
     }
     
@@ -65,7 +63,7 @@ export class OptionResolver {
         @Arg("parentId" ,() => Int,{nullable:true}) parentId: number,
     ): Promise<Option[]> {
         let condition = {groupId}
-        const qb = getConnection().getRepository(Option).createQueryBuilder("option").orderBy("option.sort", "ASC").leftJoinAndSelect("option.children", "children")
+        const qb = AppDataSource.getRepository(Option).createQueryBuilder("option").orderBy("option.sort", "ASC").leftJoinAndSelect("option.children", "children")
         if(parentId){
             condition = Object.assign(condition, { parentId })
         }else{
@@ -84,7 +82,7 @@ export class OptionResolver {
     ): Promise<boolean> {
         if(!id) return false;
         
-        await getConnection().transaction(async transactionalManager => {
+        await AppDataSource.transaction(async transactionalManager => {
             await transactionalManager.createQueryBuilder()
                 .delete()
                 .from(Option)
@@ -124,7 +122,7 @@ export class OptionResolver {
             id
         }, condition)
         if (result.affected) {
-            const option = await Option.findOne(id)
+            const option = await Option.findOneBy({id})
             if (option) {
                 return option
             }

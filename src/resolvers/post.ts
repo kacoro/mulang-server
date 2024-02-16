@@ -2,9 +2,8 @@ import { Post } from "../entities/Post";
 import { Resolver, Query, Arg, Int, Mutation, InputType, Field, Ctx, UseMiddleware, FieldResolver, Root, ObjectType } from "type-graphql";
 import { MyContext } from "../types";
 import { isAuth } from "../middleware/isAuth";
-import { getConnection } from "typeorm";
 import { Updoot } from "../entities/Updoot";
-
+import {AppDataSource} from "../index"
 @InputType()
 class PostInput {
     @Field()
@@ -72,7 +71,7 @@ export class PostResolver {
         const realValue = isUpdoot ? 1 : -1
         const { userId } = req.session
 
-        const updoot = await Updoot.findOne({ postId, userId })
+        const updoot = await Updoot.findOneBy({  postId, userId })
         console.log("updoot:", updoot)
         // the user has voted on the post before
         // and they are changing their vote
@@ -116,7 +115,7 @@ export class PostResolver {
         }
 
 
-        const qb = getConnection().getRepository(Post).createQueryBuilder("p")
+        const qb = AppDataSource.getRepository(Post).createQueryBuilder("p")
             // .innerJoinAndSelect("p.creator", "u", 'u.id = p.creatorId')
             .orderBy("p.createdAt", "DESC").take(realLimitPlusOne)
         // if (req.session.userId) {
@@ -136,9 +135,9 @@ export class PostResolver {
     @Query(() => Post, { nullable: true })
     post(
         @Arg('id', () => Int) id: number,
-    ): Promise<Post | undefined> {
+    ): Promise<Post | null> {
         // return Post.findOne(id, { relations: ["creator"] });
-        return Post.findOne(id);
+        return Post.findOneBy({id});
     }
 
     @Mutation(() => Post)
@@ -165,7 +164,7 @@ export class PostResolver {
             creatorId: req.session.userId
         }, { title, text })
         if (result.affected) {
-            const post = await Post.findOne(id)
+            const post = await Post.findOneBy({id})
             if (post) {
                 return post
             }

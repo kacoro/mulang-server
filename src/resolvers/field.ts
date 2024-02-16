@@ -1,6 +1,7 @@
 import { Resolver, Arg, Int, Mutation, Ctx, Query, UseMiddleware } from "type-graphql";
 import { MyContext } from "../types";
-import { getConnection, getManager } from "typeorm";
+
+import {AppDataSource,Manager} from "../index"
 import { Field } from "../entities/Field";
 import { isAuth } from "../middleware/isAuth";
 @Resolver(Field)
@@ -29,7 +30,6 @@ export class FieldResolver {
         }: MyContext
     ): Promise<Field> { //: Promise<Post[]>
         let csub = new Field();
-        const manager = getManager();
 
         csub = Object.assign(csub, { moduleId, title, identifier, note, type, formType, formExt, format, sort, onlyone, content, isFront, search, searchSeparaStor })
 
@@ -58,26 +58,26 @@ export class FieldResolver {
             if (content) {
                 sql += ` SET DEFAULT ${content}`
             }
-            await manager.query(sql);
+            await Manager.query(sql);
         }
         loaders.FieldLoader.clearAll()
-        const data = await manager.save(csub)
+        const data = await Manager.save(csub)
         return data;
     }
 
     @Query(() => Field, { nullable: true })
     field(
         @Arg('id', () => Int) id: number,
-    ): Promise<Field | undefined> {
+    ): Promise<Field | null> {
         // return Post.findOne(id, { relations: ["creator"] });
-        return Field.findOne(id);
+        return Field.findOneBy({id});
     }
 
     @Query(() => [Field])
     async fields(
         @Arg('moduleId', () => String, { nullable: true }) moduleId: string
     ): Promise<Field[]> {
-        let qb = getConnection().getRepository(Field).createQueryBuilder("p").orderBy("sort", "ASC")
+        let qb = AppDataSource.getRepository(Field).createQueryBuilder("p").orderBy("sort", "ASC")
         if (moduleId) {
             qb = qb.where({ moduleId })
         } else {
@@ -92,7 +92,7 @@ export class FieldResolver {
     async mFields(
         @Arg('moduleId', () => String, { nullable: true }) moduleId: string
     ): Promise<Field[]> {
-        let qb = getConnection().getRepository(Field).createQueryBuilder("p")
+        let qb = AppDataSource.getRepository(Field).createQueryBuilder("p")
         if (moduleId) {
             qb = qb.where({ moduleId }).orderBy({sort:"ASC"})
         }
@@ -108,11 +108,10 @@ export class FieldResolver {
         @Ctx() {loaders }: MyContext
     ): Promise<boolean> {
         //删除字段的时候需要处理相应的数据列
-        const manager = getManager();
-        const data = await Field.findOne(id);
+        const data = await Field.findOneBy({id});
         if (data?.moduleId) {
             let sql = `ALTER TABLE list_${data.moduleId} Drop ${data.identifier} `
-            await manager.query(sql);
+            await Manager.query(sql);
         }
         loaders.FieldLoader.clearAll()  
         //删除字段时需要删除module的layout和project的listFields
@@ -190,11 +189,10 @@ export class FieldResolver {
             id
         }, condition)
         if (result.affected) {
-            const field = await Field.findOne(id)
+            const field = await Field.findOneBy({id})
             if (field) {
                 //只有传递了title,type,时才能修改
                 if (typeof type != "undefined"&&typeof identifier != "undefined"&&typeof title != "undefined"&&field.moduleId) {//更新字段
-                    const manager = getManager();
                     //创建字段时，修改表
                     let sql = `ALTER TABLE list_${field.moduleId} MODIFY COLUMN ${identifier} `
                     switch (type) {
@@ -219,7 +217,7 @@ export class FieldResolver {
                     if (content) {
                         sql += ` SET DEFAULT ${content}`
                     }
-                    await manager.query(sql);
+                    await Manager.query(sql);
                 }
                 return field
             }

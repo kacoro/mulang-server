@@ -74,7 +74,7 @@ export class UserResolver {
             }
         }
        
-        const user = await User.findOne({ id: userId });
+        const user = await User.findOneBy({ id: userId });
         if (!user) {
             return {
                 errors: [{
@@ -128,7 +128,7 @@ export class UserResolver {
             }
         }
         const userIdNum = parseInt(userId)
-        const user =  await User.findOne({ id: userIdNum });
+        const user =  await User.findOneBy({ id: userIdNum });
         if (!user) {
             return {
                 errors: [{
@@ -161,8 +161,7 @@ export class UserResolver {
             return false;
         }
         const token = v4();
-        await redis.set(FOGET_PASSWORD_PREFIX + token, user.id, 'ex', 1000 * 60 * 60 * 24 * 3) //3 days
-
+        await redis.set(FOGET_PASSWORD_PREFIX + token, user.id, 'EX', 1000 * 60 * 60 * 24 * 3) //3 days
         sendEmail(email,
             `<a href=${process.env.CORS_ORIGIN}"/change-paasword/${token}">reset password</a>`
         );
@@ -177,7 +176,7 @@ export class UserResolver {
         if (!req.session.userId) {
             return null
         }
-        return await User.findOne(req.session.userId)
+        return await User.findOneBy({id:req.session.userId})
     }
 
     @UseMiddleware(isAuth) //禁止前台注册

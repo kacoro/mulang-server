@@ -1,7 +1,6 @@
 import { List } from "../entities/List";
 import { Resolver, Query, Arg, Int, Mutation, ObjectType, Field, UseMiddleware, Ctx, FieldResolver, Root, } from "type-graphql";
 import dayjs from "dayjs"
-import { getManager } from "typeorm";
 // import GraphQLJSON, { GraphQLJSONObject } from 'graphql-type-json'
 import GraphQLJSON from 'graphql-type-json'
 import { Project } from "../entities/Project";
@@ -12,6 +11,7 @@ import { User } from "../entities/User";
 import { Category } from "../entities/Category";
 import findTreeIds from "../utils/treetoArray";
 import { convert } from 'html-to-text';
+import { Manager } from "../index";
 // import { createUnionType } from "type-graphql";
 
 interface dictType {
@@ -136,9 +136,9 @@ export class ListResolver {
     ): Promise<number | null> {
         let project = null
         if (projectId) {
-            project = await Project.findOne({ id: projectId });
+            project = await Project.findOneBy({ id: projectId });
         } else if (projectIdentifier) {
-            project = await Project.findOne({ identifier: projectIdentifier });
+            project = await Project.findOneBy({ identifier: projectIdentifier });
         }
 
         if (!project) {
@@ -150,7 +150,7 @@ export class ListResolver {
             if (!req.session.userId) {
                 throw new Error('not authenticated')
             }
-            const user = await User.findOne({ id: req.session.userId });
+            const user = await User.findOneBy({ id: req.session.userId });
             if (!user) {
                 throw new Error('not authenticated')
             }
@@ -180,8 +180,7 @@ export class ListResolver {
           VALUES
           (${values})
           `
-        const manager = getManager();
-        const result = await manager.query(sql)
+        const result = await Manager.query(sql)
         if (result?.insertId) {
             return result.insertId
         } else {
@@ -197,9 +196,9 @@ export class ListResolver {
     ) {
         let project = null
         if (projectId) {
-            project = await Project.findOne({ id: projectId });
+            project = await Project.findOneBy({ id: projectId });
         } else if (projectIdentifier) {
-            project = await Project.findOne({ identifier: projectIdentifier });
+            project = await Project.findOneBy({ identifier: projectIdentifier });
         }
 
         if (!project) { return false }
@@ -210,8 +209,7 @@ export class ListResolver {
         }
         let sql = `UPDATE list_${moduleId} SET hits=hits +1  WHERE id=${id}`
 
-        const manager = getManager();
-        await manager.query(sql)
+        await Manager.query(sql)
         return true
     }
 
@@ -226,9 +224,9 @@ export class ListResolver {
     ) {
         let project = null
         if (projectId) {
-            project = await Project.findOne({ id: projectId });
+            project = await Project.findOneBy({ id: projectId });
         } else if (projectIdentifier) {
-            project = await Project.findOne({ identifier: projectIdentifier });
+            project = await Project.findOneBy({ identifier: projectIdentifier });
         }
 
         if (!project) {
@@ -279,8 +277,8 @@ export class ListResolver {
 
         let sql = `UPDATE list_${moduleId} SET ${setSql.join(",")} WHERE id=${id}`
 
-        const manager = getManager();
-        await manager.query(sql)
+       
+        await Manager.query(sql)
         return true
     }
     @Query(() => Content)
@@ -292,13 +290,12 @@ export class ListResolver {
 
     ): Promise<Content | Boolean> {
         //根据id来查询项目，模型
-        const project = await Project.findOne({ identifier: projectIdentifier });
+        const project = await Project.findOneBy({ identifier: projectIdentifier });
         if (!project) return false
         const { moduleId, isSeo, orderBy, id: projectId } = project
-        const manager = getManager();
-        // const qb = getConnection().getRepository(Module).createQueryBuilder("p")
+        // const qb = AppDataSource.getRepository(Module).createQueryBuilder("p")
         // const data = await qb.getMany()
-        const data = await manager.query(`SELECT * FROM list_${moduleId} WHERE id = ${id} LIMIT 1`)
+        const data = await Manager.query(`SELECT * FROM list_${moduleId} WHERE id = ${id} LIMIT 1`)
         if (data[0]) {
             let result = data[0]
             const { seoDesc, seoKeywords, seoTitle, ...other } = result
@@ -343,10 +340,10 @@ export class ListResolver {
 
                 let prevSql = `SELECT id,title,publishTime FROM list_${moduleId} ${prevWhere} order by ${orderKey} asc limit 1`
 
-                const prevData = await manager.query(prevSql)
+                const prevData = await Manager.query(prevSql)
 
                 let nextSql = `SELECT id,title,publishTime FROM list_${moduleId} ${nextWhere} order by ${orderKey} desc limit 1`
-                const nextData = await manager.query(nextSql)
+                const nextData = await Manager.query(nextSql)
 
                 return { content: other, seo, prev: prevData[0], next: nextData[0] }
             }
@@ -366,7 +363,7 @@ export class ListResolver {
     ): Promise<boolean> {
         if (!moduleId) {
             if (projectIdentifier) {
-                const project = await Project.findOne({ identifier: projectIdentifier });
+                const project = await Project.findOneBy({ identifier: projectIdentifier });
                 if (!project) {
                     return false
                 } else {
@@ -376,8 +373,7 @@ export class ListResolver {
                 return false
             }
         }
-        const manager = getManager();
-        await manager.query(`DELETE  FROM list_${moduleId} WHERE id = ${id}`)
+        await Manager.query(`DELETE  FROM list_${moduleId} WHERE id = ${id}`)
       
         return true;
     }
@@ -391,16 +387,15 @@ export class ListResolver {
         if (!ids) return []
         let project = null
         if (projectId) {
-            project = await Project.findOne({ id: projectId });
+            project = await Project.findOneBy({ id: projectId });
         } else if (projectIdentifier) {
-            project = await Project.findOne({ identifier: projectIdentifier });
+            project = await Project.findOneBy({ identifier: projectIdentifier });
         }
         if (!project) return []
         let whereSql = `WHERE `;
         let columnSql = 'id,title,projectId,categoryId,createdAt'
         const { moduleId, listFields } = project
         // whereSql += `projectId = ${projectId}`
-        const manager = getManager();
         if (listFields) {
             columnSql += `,${listFields}`
         }
@@ -410,7 +405,7 @@ export class ListResolver {
         whereSql += `id in (${filterIds})`
         let orderSql = `ORDER BY id ASC`
         let sql = `SELECT ${columnSql} FROM list_${moduleId} ${whereSql} ${orderSql}`
-        const data = await manager.query(sql)
+        const data = await Manager.query(sql)
 
         let result = data.map((item: any) => {
             //console.log(item)
@@ -439,7 +434,7 @@ export class ListResolver {
         let whereSql = `WHERE `;
         let columnSql = 'id,title,projectId,categoryId,createdAt'
 
-        const project = await Project.findOne({ identifier: identifier });
+        const project = await Project.findOneBy({ identifier: identifier });
         if (!project) return null
         const { moduleId, id: projectId } = project
 
@@ -449,15 +444,14 @@ export class ListResolver {
         //根据id来查询项目，模型
         const realLimit = Math.min(100, limit);
         //let totalPageNum = (totalRecord +pageSize - 1) / pageSize;
-        const manager = getManager();
 
         if (categoryId) {
             //whereSql += ` AND categoryId = ${categoryId}`
             let cateSql = ` AND categoryId = ${categoryId}`
             //找到该分类下的子分类
-            const parentCategory = await Category.findOne({ id: categoryId })
+            const parentCategory = await Category.findOneBy({ id: categoryId })
             if (parentCategory) {
-                let cate = await manager.getTreeRepository(Category).findDescendantsTree(parentCategory);
+                let cate = await Manager.getTreeRepository(Category).findDescendantsTree(parentCategory);
 
 
                 if (cate) {
@@ -489,8 +483,8 @@ export class ListResolver {
 
         let sql = `SELECT ${columnSql} FROM list_${moduleId} l ${whereSql} ${orderSql} LIMIT ${offset},${realLimit}`
         //默认读取全部,自定义。通过读取项目的list来获取。默认 id,title,createdAt,sort
-        const data = await manager.query(sql)
-        let totalRes = await manager.query(`SELECT COUNT(id) FROM list_${moduleId}  ${whereSql}`)
+        const data = await Manager.query(sql)
+        let totalRes = await Manager.query(`SELECT COUNT(id) FROM list_${moduleId}  ${whereSql}`)
 
         total = parseInt(totalRes[0]['COUNT(id)'])
 

@@ -1,6 +1,6 @@
 import { Resolver, Arg, Int, Mutation, Ctx, Query, Root, FieldResolver, UseMiddleware } from "type-graphql";
 import { MyContext } from "../types";
-import { getManager } from "typeorm";
+import { Manager } from "../index";
 import { Category } from "../entities/Category";
 import GraphQLJSON from "graphql-type-json";
 import { Seo } from "../entities/Seo";
@@ -29,7 +29,6 @@ export class CateResolver {
         @Ctx() { }: MyContext
     ): Promise<Category> { //: Promise<Post[]>
         const csub = new Category();
-        const manager = getManager();
         if(identity){
             csub.identity = identity
         }
@@ -40,12 +39,12 @@ export class CateResolver {
         }
         csub.name = name;
         if (parentId) {
-            const croot = await manager.getTreeRepository(Category).findOne({ id: parentId });
+            const croot = await Manager.getTreeRepository(Category).findOneBy({ id: parentId });
             if (croot) {
                 csub.parent = croot;
             }
         }
-        return await manager.save(csub);
+        return await Manager.save(csub);
     }
 
     @Mutation(()=>Category, { nullable: true })
@@ -69,7 +68,7 @@ export class CateResolver {
             id,
         }, condition)
         if (result.affected) {
-            const cate = await Category.findOne(id)
+            const cate = await Category.findOneBy({id})
             if (cate) {
                 return cate
             }
@@ -92,16 +91,15 @@ export class CateResolver {
     async categorys(
         @Arg('id', () => Int, { nullable: true }) id: number
     ): Promise<Category[]> {
-        const manager = getManager();
         let treeCategories = [] as Category[]
         if (!id) {
-            treeCategories = await manager.getTreeRepository(Category).findTrees();
+            treeCategories = await Manager.getTreeRepository(Category).findTrees();
         }
         else {
             // where mpath LIKE '2.%'；
-            let parentCategory = await Category.findOne(id)
+            let parentCategory = await Category.findOneBy({id})
             if (parentCategory) {
-                let cate = await manager.getTreeRepository(Category).findDescendantsTree(parentCategory);
+                let cate = await Manager.getTreeRepository(Category).findDescendantsTree(parentCategory);
                 if (cate) {
                     treeCategories = cate.children
                 }
@@ -117,17 +115,16 @@ export class CateResolver {
         @Arg('identity',()=> String,{nullable:true}) identity:string |null
     ): Promise<Category | null> {
         
-        const manager = getManager();
         let treeCategories = null
         let parentCategory = undefined
         if(identity){
-            parentCategory = await Category.findOne({identity})
+            parentCategory = await Category.findOneBy({identity})
         }else if(id){
-            parentCategory = await Category.findOne(id)
+            parentCategory = await Category.findOneBy({id})
 
         }
         if (parentCategory) {
-            let cate = await manager.getTreeRepository(Category).findDescendantsTree(parentCategory);
+            let cate = await Manager.getTreeRepository(Category).findDescendantsTree(parentCategory);
             if (cate) {
                 treeCategories = cate
             }

@@ -51,3 +51,13 @@ docker-compose -f docker-compose-env.yml down
 pm2 start npm --name server -- start
 ```
 
+## changeLog
+
+update typeorm
+> see more detailshttps://orkhan.gitbook.io/typeorm/
+
+skip lib check
+
+```
+"skipLibCheck":true
+```

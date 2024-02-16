@@ -1,6 +1,6 @@
 import { Resolver, Arg, Int, Mutation, Ctx, Query, FieldResolver, Root, UseMiddleware } from "type-graphql";
 import { MyContext } from "../types";
-import { getConnection, getManager } from "typeorm";
+import {AppDataSource,Manager} from "../index"
 import { Project } from "../entities/Project";
 import {Module} from "../entities/Module"
 import { Category } from "../entities/Category"
@@ -16,7 +16,7 @@ export class ProjectResolver {
         @Root() project: Project,
         // @Ctx() {loaders}:MyContext
     ) {
-        return Module.findOne({id:project.moduleId})
+        return Module.findOneBy({id:project.moduleId})
       // return loaders.UserLoader.load(post.creatorId)
     } 
 
@@ -47,10 +47,9 @@ export class ProjectResolver {
         // @Ctx() {loaders}:MyContext
     ): Promise<Category | null> {
         let treeCategories = null;
-        const manager = getManager();
-        let parentCategory = await Category.findOne({id:project.categoryId})
+        let parentCategory = await Category.findOneBy({id:project.categoryId})
         if(parentCategory){
-            let cate = await manager.getTreeRepository(Category).findDescendantsTree(parentCategory);
+            let cate = await Manager.getTreeRepository(Category).findDescendantsTree(parentCategory);
             if (cate) {
                 treeCategories = cate
             }
@@ -79,7 +78,6 @@ export class ProjectResolver {
         @Ctx() { }: MyContext
     ): Promise<Project|null> { //: Promise<Post[]>
         const csub = new Project();
-        const manager = getManager();
         csub.title = title;
         csub.identifier = identifier;
         csub.sort = sort;
@@ -90,7 +88,7 @@ export class ProjectResolver {
         csub.listFields = listFields
         csub.isFront = isFront
         csub.orderBy = orderBy
-        const module =  await manager.findOne(Module, {id:moduleId});
+        const module =  await Manager.findOneBy(Module, {id:moduleId});
         if(typeof isSeo !="undefined"){
             csub.isSeo = isSeo
             if(typeof seo !="undefined"&&isSeo!=0){
@@ -100,15 +98,15 @@ export class ProjectResolver {
             }
         }
         // if(module){
-        //     const project =  await manager.save(csub);
+        //     const project =  await Manager.save(csub);
         //     module.projects = [project]
-        //     await manager.save(module)
+        //     await Manager.save(module)
         //     return project
         // }
         if(module){
             csub.module = module
             
-            return await manager.save(csub);
+            return await Manager.save(csub);
         }
         return null
         
@@ -118,14 +116,14 @@ export class ProjectResolver {
     async project(
         @Arg('id', () => Int, { nullable: true }) id: number,
         @Arg('identifier', () => String, { nullable: true }) identifier: string,
-    ): Promise<Project | undefined> {
+    ): Promise<Project | null> {
         // return Post.findOne(id, { relations: ["creator"] });
         if(id){
-            return await Project.findOne(id);
+            return await Project.findOneBy({id});
         } else if(identifier){
-            return Project.findOne({where:{identifier:identifier}});
+            return Project.findOneBy({identifier:identifier});
         }else{
-            return undefined
+            return null
         }
         
     }
@@ -135,7 +133,7 @@ export class ProjectResolver {
         // @Arg('id', () => Int, { nullable: true }) id: number
         @Arg('status', () => Int, { nullable: true }) status: number,
     ): Promise<Project[]> {
-        const qb = getConnection().getRepository(Project).createQueryBuilder("p").orderBy({sort:"ASC"})
+        const qb = AppDataSource.getRepository(Project).createQueryBuilder("p").orderBy({sort:"ASC"})
 
         if(typeof status !="undefined"){
             qb.where({status:status})
@@ -216,7 +214,7 @@ export class ProjectResolver {
             id
         }, condition)
         if (result.affected) {
-            const project = await Project.findOne(id)
+            const project = await Project.findOneBy({id})
             if (project) {
                 return project
             }

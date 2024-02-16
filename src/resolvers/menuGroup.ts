@@ -1,6 +1,6 @@
 import { Resolver, Arg, Int, Mutation, Ctx, Query,  UseMiddleware } from "type-graphql";
 import { MyContext } from "../types";
-import { getConnection, getManager } from "typeorm";
+import { AppDataSource,Manager } from "../index";
 import { MenuGroup } from "../entities/MenuGroup";
 import { isAuth } from "../middleware/isAuth";
 @Resolver(MenuGroup)
@@ -14,29 +14,28 @@ export class MenuGroupResolver {
         @Ctx() { }: MyContext
     ): Promise<MenuGroup> { //: Promise<Post[]>
         const csub = new MenuGroup();
-        const manager = getManager();
         csub.title = title;
         csub.identifier = identifier;
-        return await manager.save(csub);
+        return await Manager.save(csub);
     }
 
     @Query(() => MenuGroup, { nullable: true })
     async menuGroup(
         @Arg('id', () => Int, { nullable: true }) id: number,
      
-    ): Promise<MenuGroup | undefined> {
+    ): Promise<MenuGroup | null> {
         // return Post.findOne(id, { relations: ["creator"] });
         if(id){
-            return await MenuGroup.findOne(id);
+            return await MenuGroup.findOneBy({id});
         } else{
-            return undefined
+            return null
         }
     }
     
     @Query(() => [MenuGroup])
     async menuGroups(
     ): Promise<MenuGroup[]> {
-        const qb = getConnection().getRepository(MenuGroup).createQueryBuilder("p")
+        const qb = AppDataSource.getRepository(MenuGroup).createQueryBuilder("p")
         const data = await qb.getMany()
         return data
     }
@@ -67,7 +66,7 @@ export class MenuGroupResolver {
             id
         }, condition)
         if (result.affected) {
-            const menuGroup = await MenuGroup.findOne(id)
+            const menuGroup = await MenuGroup.findOneBy({id})
             if (menuGroup) {
                 return menuGroup
             }

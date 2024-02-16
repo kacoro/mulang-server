@@ -1,9 +1,10 @@
 import { Resolver, Arg, Int, Mutation, Ctx, Query, FieldResolver, Root } from "type-graphql";
 import { MyContext } from "../types";
-import {   getManager, Not } from "typeorm";
+import {    Not } from "typeorm";
 import { Site } from "../entities/Site";
 import { Seo } from "../entities/Seo";
 import GraphQLJSON from "graphql-type-json";
+import { Manager } from "../index";
 @Resolver(Site)
 export class SiteResolver {
    
@@ -33,7 +34,6 @@ export class SiteResolver {
         @Ctx() { }: MyContext
     ): Promise<Site | null> { //: Promise<Post[]>
         const csub = new Site();
-        const manager = getManager();
         const count = await Site.createQueryBuilder("s").getCount()
         csub.title = title;
         csub.identifier = identifier;
@@ -51,7 +51,7 @@ export class SiteResolver {
         if(count==0){
             csub.isDefault = true
         }
-        return await manager.save(csub);
+        return await Manager.save(csub);
 
     }
 
@@ -59,14 +59,14 @@ export class SiteResolver {
     async site(
         @Arg('id', () => Int, { nullable: true }) id: number,
         @Arg('identifier', () => String, { nullable: true }) identifier: string,
-    ): Promise<Site | undefined> {
+    ): Promise<Site | null> {
         // return Post.findOne(id, { relations: ["creator"] });
         if (id) {
-            return await Site.findOne(id);
+            return await Site.findOneBy({id});
         } else if (identifier) {
-            return Site.findOne({ where: { identifier: identifier } });
+            return Site.findOneBy({ identifier: identifier });
         } else {
-            return await Site.findOne({where:{isDefault:true}});
+            return await Site.findOneBy({isDefault:true});
         }
     }
 
@@ -85,7 +85,7 @@ export class SiteResolver {
         @Ctx() { }: MyContext
     ): Promise<boolean> {
         //const count = await Site.createQueryBuilder("s").getCount()
-        const site = await Site.findOne(id)
+        const site = await Site.findOneBy({id})
         if(site?.isDefault!=true){
               await Site.delete({ id }) 
               return true
@@ -101,13 +101,13 @@ export class SiteResolver {
     ): Promise<Boolean> {
         
         const count = await Site.createQueryBuilder("s").getCount()
-        const site = await Site.findOne(id)
+        const site = await Site.findOneBy({id})
         console.log(count,site)
         if(site&&count>1){//只有不是默认网站且站点数量大于1的时候才可以修改
             //Site.createQueryBuilder().update
             console.log(count,site.isDefault)
             await Site.update({id:Not(id)},{ isDefault:false})
-            //await getConnection().createQueryBuilder().update(Site).set({isDefault:false}).execute();
+            //await AppDataSource.createQueryBuilder().update(Site).set({isDefault:false}).execute();
             await Site.update({id},{isDefault:true})
             return true
         }
@@ -169,7 +169,7 @@ export class SiteResolver {
             id
         }, condition)
         if (result.affected) {
-            const site = await Site.findOne(id)
+            const site = await Site.findOneBy({id})
             if (site) {
                 return site
             }

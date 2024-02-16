@@ -2,10 +2,11 @@ import { Resource } from "../entities/Resource";
 import { Resolver, Query, Arg, Int, Mutation, InputType, Field, Ctx, UseMiddleware, FieldResolver, Root, ObjectType } from "type-graphql";
 import { MyContext } from "../types";
 import { isAuth } from "../middleware/isAuth";
-import { getConnection, Like } from "typeorm";
+import {AppDataSource} from "../index"
 import PaginatedResponse from "../types/PaginatedResponseClass";
 import fs from 'fs'
 import path from 'path'
+import { Like } from "typeorm";
 @InputType()
 class ResourceInput {
     @Field()
@@ -57,7 +58,7 @@ export class ResourceResolver {
         //const realLimitPlusOne = realLimit + 1
         let offset = (page - 1) * realLimit;
         let total = 0;
-        const qb = getConnection().getRepository(Resource).createQueryBuilder("resource")
+        const qb = AppDataSource.getRepository(Resource).createQueryBuilder("resource")
        
         let condition ={}
         if(groupId){
@@ -92,9 +93,9 @@ export class ResourceResolver {
     @Query(() => Resource, { nullable: true })
     resource(
         @Arg('id', () => Int) id: number,
-    ): Promise<Resource | undefined> {
+    ): Promise<Resource | null> {
         // return Post.findOne(id, { relations: ["creator"] });
-        return Resource.findOne(id);
+        return Resource.findOneBy({id});
     }
 
     @Mutation(() => Resource)
@@ -120,7 +121,7 @@ export class ResourceResolver {
             creatorId: req.session.userId
         }, { title })
         if (result.affected) {
-            const post = await Resource.findOne(id)
+            const post = await Resource.findOneBy({id})
             if (post) {
                 return post
             }
@@ -136,7 +137,7 @@ export class ResourceResolver {
         // @Ctx() { req }: MyContext
     ): Promise<boolean> {
        
-        let res = await Resource.findOne(id)
+        let res = await Resource.findOneBy({id})
         
         if(res){
             const pathName = path.join(__dirname, "../../public",res.url)

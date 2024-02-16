@@ -1,6 +1,7 @@
 import { Resolver, Arg, Int, Mutation, Ctx, Query,  UseMiddleware } from "type-graphql";
 import { MyContext } from "../types";
-import { getConnection, getManager } from "typeorm";
+import {AppDataSource,Manager} from "../index"
+
 import { OptionGroup } from "../entities/OptionGroup";
 import { isAuth } from "../middleware/isAuth";
 @Resolver(OptionGroup)
@@ -15,29 +16,28 @@ export class OptionGroupResolver {
         @Ctx() { }: MyContext
     ): Promise<OptionGroup> { //: Promise<Post[]>
         const csub = new OptionGroup();
-        const manager = getManager();
         csub.title = title;
         csub.linkSymbol = linkSymbol;
-        return await manager.save(csub);
+        return await Manager.save(csub);
     }
 
     @Query(() => OptionGroup, { nullable: true })
     async optionGroup(
         @Arg('id', () => Int, { nullable: true }) id: number,
      
-    ): Promise<OptionGroup | undefined> {
+    ): Promise<OptionGroup | null> {
         // return Post.findOne(id, { relations: ["creator"] });
         if(id){
-            return await OptionGroup.findOne(id);
+            return await OptionGroup.findOneBy({id});
         } else{
-            return undefined
+            return null
         }
     }
     
     @Query(() => [OptionGroup])
     async optionGroups(
     ): Promise<OptionGroup[]> {
-        const qb = getConnection().getRepository(OptionGroup).createQueryBuilder("p")
+        const qb = AppDataSource.getRepository(OptionGroup).createQueryBuilder("p")
         const data = await qb.getMany()
         return data
     }
@@ -73,7 +73,7 @@ export class OptionGroupResolver {
             id
         }, condition)
         if (result.affected) {
-            const optionGroup = await OptionGroup.findOne(id)
+            const optionGroup = await OptionGroup.findOneBy({id})
             if (optionGroup) {
                 return optionGroup
             }

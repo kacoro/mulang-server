@@ -1,6 +1,6 @@
 import { Resolver, Arg, Int, Mutation, Ctx, Query, UseMiddleware } from "type-graphql";
 import { MyContext } from "../types";
-import { getConnection, getManager } from "typeorm";
+import { AppDataSource,Manager } from "../index";
 import { Module } from "../entities/Module";
 import { isAuth } from "../middleware/isAuth";
 @Resolver(Module)
@@ -21,7 +21,6 @@ export class ModuleResolver {
         @Ctx() { }: MyContext
     ): Promise<Module> { //: Promise<Post[]>
         const csub = new Module();
-        const manager = getManager();
         csub.title = title;
         csub.note = note;
         csub.sort = sort;
@@ -30,11 +29,11 @@ export class ModuleResolver {
         csub.layout = layout;
         csub.type = type;
         csub.isSeo = isSeo;
-        const data =  await manager.save(csub);
+        const data =  await Manager.save(csub);
         console.log(data)
         //创建时，创建新表
        
-        await manager.query(`CREATE TABLE IF NOT EXISTS ${data.table}_${data.id}(
+        await Manager.query(`CREATE TABLE IF NOT EXISTS ${data.table}_${data.id}(
             id INT UNSIGNED AUTO_INCREMENT,
             moduleId INT UNSIGNED,
             projectId INT UNSIGNED,
@@ -46,10 +45,9 @@ export class ModuleResolver {
         )`);
 
         if(isSeo){ //为真添加
-            const manager =  getManager();
             let sql = `ALTER TABLE list_${data.id} `
             sql += `Add seoTitle varchar(255),Add seoKeywords varchar(255),Add seoDesc varchar(255) `
-            await manager.query(sql);
+            await Manager.query(sql);
         }   
          return data
     }
@@ -57,16 +55,16 @@ export class ModuleResolver {
     @Query(() => Module, { nullable: true })
     module(
         @Arg('id', () => Int) id: number,
-    ): Promise<Module | undefined> {
+    ): Promise<Module | null> {
         // return Post.findOne(id, { relations: ["creator"] });
-        return Module.findOne(id);
+        return Module.findOneBy({id});
     }
     
     @Query(() => [Module])
     async modules(
         // @Arg('id', () => Int, { nullable: true }) id: number
     ): Promise<Module[]> {
-        const qb = getConnection().getRepository(Module).createQueryBuilder("p")
+        const qb = AppDataSource.getRepository(Module).createQueryBuilder("p")
         const data = await qb.getMany()
         return data
     }
@@ -77,15 +75,14 @@ export class ModuleResolver {
         @Arg("id", () => Int) id: number,
         @Ctx() {  }: MyContext
     ): Promise<Boolean> {
-        const manager = getManager();
-        const data = await Module.findOne(id);
+        const data = await Module.findOneBy({id});
         //删除前要确保没有被project使用
         if(data){
             await Module.delete({ id})
              //创建时，创建新表
-             await manager.query(`DROP TABLE IF EXISTS ${data.table}_${data.id}`);
+             await Manager.query(`DROP TABLE IF EXISTS ${data.table}_${data.id}`);
              //删除模块
-             await await manager.query(`DELETE  FROM  field WHERE moduleId = ${id}`)
+             await await Manager.query(`DELETE  FROM  field WHERE moduleId = ${id}`)
         }
         
         return true;
@@ -108,7 +105,6 @@ export class ModuleResolver {
         @Arg('isSort', () => Boolean, { nullable: true }) isSort: boolean,
         @Ctx() {  }: MyContext
     ): Promise<Module | null> {
-        const manager =  getManager();
         let condition = { } //管理员不需要过滤
         if(typeof title !="undefined"){
             condition = Object.assign(condition, { title })
@@ -131,7 +127,7 @@ export class ModuleResolver {
         if(typeof table !="undefined"){
             condition = Object.assign(condition, { table })
         }
-        const oldModule = await Module.findOne(id)
+        const oldModule = await Module.findOneBy({id})
         if(!oldModule) return null
         if(typeof isSeo !="undefined"&&oldModule.isSeo!=isSeo){
             
@@ -144,7 +140,7 @@ export class ModuleResolver {
             }else{ //为假删除
                  sql += `Drop seoTitle seoKeywords seoDesc`
             }
-            await manager.query(sql);
+            await Manager.query(sql);
         }
         if(typeof isHits !="undefined"&&oldModule.isHits!=isHits){
             condition = Object.assign(condition, { isHits })
@@ -154,7 +150,7 @@ export class ModuleResolver {
             }else{
                 sql += `Drop hits`
             }
-            await manager.query(sql);
+            await Manager.query(sql);
 
         }
         if(typeof isPublishTime !="undefined"&&oldModule.isPublishTime!=isPublishTime){
@@ -165,7 +161,7 @@ export class ModuleResolver {
             }else{
                 sql += `Drop publishTime`
             }
-            await manager.query(sql);
+            await Manager.query(sql);
         }
         if(typeof isSort !="undefined"&&oldModule.isSort!=isSort){
             condition = Object.assign(condition, { isSort })
@@ -175,14 +171,14 @@ export class ModuleResolver {
             }else{
                 sql += `Drop sort`
             }
-            await manager.query(sql);
+            await Manager.query(sql);
         }
 
         const result = await Module.update({
             id
         }, condition)
         if (result.affected) {
-            const module = await Module.findOne(id)
+            const module = await Module.findOneBy({id})
             if (module) {
                 return module
             }

@@ -1,6 +1,7 @@
 import { Resolver, Arg, Int, Mutation, Ctx, Query, UseMiddleware, FieldResolver, Root, ObjectType, Field } from "type-graphql";
 import { MyContext } from "../types";
-import { getConnection, getManager } from "typeorm";
+import {  In} from "typeorm";
+import { AppDataSource,Manager } from "../index";
 import { Menu } from "../entities/Menu";
 import { isAuth } from "../middleware/isAuth";
 import { MenuGroup } from "../entities/MenuGroup";
@@ -9,7 +10,6 @@ import { Project } from "../entities/Project";
 import { CateResolver } from "./category";
 import { Category } from "../entities/Category";
 import { ListResolver } from "./list";
-
 @ObjectType()
 class MenuTree {
     @Field(() => String)
@@ -55,10 +55,9 @@ export class MenuResolver {
         @Arg('target', () => Int, { nullable: true }) target: number,
         @Ctx() { }: MyContext
     ): Promise<Menu | Boolean> { //: Promise<Post[]>
-        const menuGroup = await MenuGroup.findOne({ id: groupId })
+        const menuGroup = await MenuGroup.findOneBy({ id: groupId })
         if (!menuGroup) return false
         const csub = new Menu();
-        const manager = getManager();
         csub.title = title;
         csub.sort = sort;
         csub.type = type;
@@ -70,7 +69,7 @@ export class MenuResolver {
         csub.listId = listId;
         csub.link = link;
         if (parentId) {
-            const parent = await Menu.findOne({ id: parentId })
+            const parent = await Menu.findOneBy({ id: parentId })
             if (parent) {
                 csub.parentId = parentId;
                 csub.parent = parent;
@@ -79,19 +78,19 @@ export class MenuResolver {
 
         csub.group = menuGroup
         console.log(csub)
-        return await manager.save(csub);
+        return await Manager.save(csub);
     }
 
     @Query(() => Menu, { nullable: true })
     async menu(
         @Arg('id', () => Int, { nullable: true }) id: number,
 
-    ): Promise<Menu | undefined> {
+    ): Promise<Menu | null> {
         // return Post.findOne(id, { relations: ["creator"] });
         if (id) {
-            return await Menu.findOne(id, { relations: ["children"] });
+            return await Menu.findOne({where:{id}, relations:{children:true}});
         } else {
-            return undefined
+            return null
         }
     }
 
@@ -102,7 +101,7 @@ export class MenuResolver {
 
     ): Promise<Menu[]> {
         let condition = { groupId }
-        const qb = getConnection().getRepository(Menu).createQueryBuilder("menu").orderBy("menu.sort", "ASC").leftJoinAndSelect("menu.children", "children")
+        const qb = AppDataSource.getRepository(Menu).createQueryBuilder("menu").orderBy("menu.sort", "ASC").leftJoinAndSelect("menu.children", "children")
         if (parentId) {
             condition = Object.assign(condition, { parentId })
         } else {
@@ -118,8 +117,7 @@ export class MenuResolver {
         @Arg('identifier', () => String) identifier: string,
         //  @Ctx() {loaders}:MyContext
     ): Promise<MenuTree[]> {
-        const menuGroup = await MenuGroup.findOne({ identifier })
-        // const manager = getManager();
+        const menuGroup = await MenuGroup.findOneBy({ identifier })
         if (!menuGroup) return []
         const { id: groupId } = menuGroup
         const menus = await Menu.find({ where: { groupId, status: 1 }, order: { sort: "ASC" } })
@@ -133,7 +131,9 @@ export class MenuResolver {
         })
         projectIds = Array.from(new Set(projectIds))
 
-        const projects = await Project.findByIds(projectIds as number[])
+        // const projects = await Project.findByIds(projectIds as number[])
+        const projects = await Project.findBy({id:In(projectIds) })
+
         const IdToProject: Record<number, Project> = {};
         projects.forEach((p) => {
             IdToProject[p.id] = p;
@@ -217,7 +217,7 @@ export class MenuResolver {
     ): Promise<boolean> {
         if (!id) return false;
 
-        await getConnection().transaction(async transactionalManager => {
+        await AppDataSource.transaction(async transactionalManager => {
             await transactionalManager.createQueryBuilder()
                 .delete()
                 .from(Menu)
@@ -281,7 +281,7 @@ export class MenuResolver {
             id
         }, condition)
         if (result.affected) {
-            const menu = await Menu.findOne(id)
+            const menu = await Menu.findOneBy({id})
             if (menu) {
                 return menu
             }
