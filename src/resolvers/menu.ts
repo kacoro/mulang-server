@@ -77,7 +77,7 @@ export class MenuResolver {
         }
 
         csub.group = menuGroup
-        console.log(csub)
+        // console.log(csub)
         return await Manager.save(csub);
     }
 

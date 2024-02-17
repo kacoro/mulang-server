@@ -26,8 +26,11 @@ import {resolvers} from './resolvers'
 // import graphqlUploadExpress from "grpahql-upload/graphqlUploadExpress.mjs";
 
 import { graphqlUploadExpress } from './plugins/graphql-upload'
+import { verifyJwt } from "./utils/jwt";
 export const AppDataSource = new DataSource (typeormConfig)
 export const Manager = AppDataSource.manager
+export const redis = new Redis({port:Number(process.env.REDIS_PORT)})
+export const RedisStroe = connectRedis(session)
 const main = async () => {
    
     await AppDataSource.initialize()
@@ -35,9 +38,8 @@ const main = async () => {
     // await conn.runMigrations();
     const app = express();
     const httpServer = http.createServer(app);
-    const RedisStroe = connectRedis(session)
+   
     console.log(process.env.REDIS_URL||9978)
-    const redis = new Redis({port:Number(process.env.REDIS_PORT)})
     
     app.set('trust proxy',1);
     app.use(cors({
@@ -74,7 +76,10 @@ const main = async () => {
         validate: false
     })
 
-    const apolloServer = new ApolloServer({ schema ,plugins: [ApolloServerPluginDrainHttpServer({ httpServer })]});
+    const apolloServer = new ApolloServer({ 
+        schema ,
+        plugins: [ApolloServerPluginDrainHttpServer({ httpServer })]
+    });
     //     const { url } = await startStandaloneServer(server, {
     //     context: async ({ req,res }) => ({  req, res , redis,loaders:entitieLoaders}),
         
@@ -85,8 +90,15 @@ const main = async () => {
         cors<cors.CorsRequest>(),
         express.json(),
         expressMiddleware(apolloServer, {
-          context: async ({ req ,res}) => ({ req, res, redis,loaders:entitieLoaders,token: req.headers.token }),
-        }),
+            context: async ({ req ,res}) => {
+                const token = req.headers.authorization || '';
+                let payload = ""
+                if(token){
+                 payload = verifyJwt(token.replace('Bearer ', ''));
+                }
+                return { req, res, redis,loaders:entitieLoaders,token: req.headers.token,payload };
+            }
+        })
       );
       
     // const apolloServer = new ApolloServer({

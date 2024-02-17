@@ -39,12 +39,12 @@ export class UploadResolver {
     @UseMiddleware(isAuth)
     async uploadFile(
         @Arg("file", () => GraphQLUpload) file: FileUpload,
-        @Ctx() {req }: MyContext
+        @Ctx() {payload }: MyContext
     ): Promise<FileResponse> {
         try {
             const { createReadStream, filename,mimetype } = await file; //createReadStream,filename,mimetype,encoding
-            console.log(filename,mimetype)
-            console.log(path.parse(filename))
+            // console.log(filename,mimetype)
+            // console.log(path.parse(filename))
             const { name,ext } = path.parse(filename)
             const randomName = generateRandomString(12) + ext
            
@@ -73,7 +73,7 @@ export class UploadResolver {
                 };
             } else{
                 let url = '/upload/images/' + randomName
-                await Resource.create({ url:url,title:name,ext:ext,filename:randomName,mimetype:mimetype, creatorId: req.session.userId }).save()
+                await Resource.create({ url:url,title:name,ext:ext,filename:randomName,mimetype:mimetype, creatorId: payload.sub }).save()
                 return {
                     url: url,
                 };

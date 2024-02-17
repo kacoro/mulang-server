@@ -125,14 +125,14 @@ export class ListResolver {
     }
 
     @Mutation(() => Int, { nullable: true })
-    // @UseMiddleware(isAuth)
+    //@UseMiddleware(isAuth)
     async createList(
         //@Arg('moduleId', () => Int, { nullable: true }) moduleId: number,
         @Arg('projectId', () => Int, { nullable: true }) projectId: number,
         @Arg('projectIdentifier', () => String, { nullable: true }) projectIdentifier: string,
         @Arg('json', () => GraphQLJSON) json: JSON,
         @Arg('seo', () => GraphQLJSON, { nullable: true }) seo: Seo,
-        @Ctx() { req }: MyContext
+        @Ctx() { payload}: MyContext
     ): Promise<number | null> {
         let project = null
         if (projectId) {
@@ -147,10 +147,10 @@ export class ListResolver {
 
         //判断是否允许前台发布 isFront //如果不允许则需要验证用户是否登录
         if (!project.isFront) {
-            if (!req.session.userId) {
+            if (!payload.sub) {
                 throw new Error('not authenticated')
             }
-            const user = await User.findOneBy({ id: req.session.userId });
+            const user = await User.findOneBy({ id: payload.sub});
             if (!user) {
                 throw new Error('not authenticated')
             }

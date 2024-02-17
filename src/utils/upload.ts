@@ -78,21 +78,21 @@ function uploadFile( ctx: { req: any; res: any; host: any; }, options: { fileTyp
         result.data = {
           pictureUrl: `//${ctx.host}/upload/image/${fileType}/${fileName}`
         }
-        console.log('文件上传成功！')
+        // console.log('文件上传成功！')
         resolve(result)
       })
     })
 
     // 解析结束事件
     busboy.on('finish', function( ) {
-      console.log('文件上结束')
+      // console.log('文件上结束')
       resolve(result)
     })
 
     // 解析错误事件
     busboy.on('error', function(err: any) {
         console.log(err)
-      console.log('文件上出错')
+      // console.log('文件上出错')
       reject(result)
     })
 

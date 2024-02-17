@@ -43,7 +43,7 @@ export class PostResolver {
     @FieldResolver(() => Int, { nullable: true })
     async voteStatus(
         @Root() root: Post,
-        @Ctx() {loaders,req}:MyContext
+        @Ctx() {loaders,payload}:MyContext
     ) {
         // console.log(root.updoots)
         // // root.updoots
@@ -52,10 +52,10 @@ export class PostResolver {
         // } else {
         //     return null
         // }
-        if(!req.session.userId){
+        if(!payload){
             return null
         }
-        const updoot = await loaders.UpdootLoader.load({postId:root.id,userId:req.session.userId})
+        const updoot = await loaders.UpdootLoader.load({postId:root.id,userId:payload.sub})
         return updoot ?updoot.value:null
     }
 
@@ -64,15 +64,15 @@ export class PostResolver {
     async vote(
         @Arg('postId', () => Int) postId: number,
         @Arg('value', () => Int) value: number,
-        @Ctx() { req }: MyContext
+        @Ctx() { payload }: MyContext
     ) {
 
         const isUpdoot = value !== -1;
         const realValue = isUpdoot ? 1 : -1
-        const { userId } = req.session
+        const { userId } = payload
 
         const updoot = await Updoot.findOneBy({  postId, userId })
-        console.log("updoot:", updoot)
+        // console.log("updoot:", updoot)
         // the user has voted on the post before
         // and they are changing their vote
         if (updoot && updoot.value !== realValue) {
@@ -101,13 +101,13 @@ export class PostResolver {
     async posts(
         @Arg('limit', () => Int) limit: number,
         @Arg('cursor', () => String, { nullable: true }) cursor: string | null,
-        @Ctx() { req }: MyContext
+        @Ctx() { payload}: MyContext
     ): Promise<PaginatedPosts> { //: Promise<Post[]>
         // 20->21
         const realLimit = Math.min(50, limit);
         const realLimitPlusOne = realLimit + 1
 
-        const replacements: any[] = [realLimitPlusOne, req.session.userId]
+        const replacements: any[] = [realLimitPlusOne, payload.sub]
 
         if (cursor) {
             const parseCurrsor = new Date(parseInt(cursor))
@@ -144,10 +144,10 @@ export class PostResolver {
     @UseMiddleware(isAuth)
     async createPost(
         @Arg("input") input: PostInput,
-        @Ctx() { req }: MyContext
+        @Ctx() { payload }: MyContext
     ): Promise<Post> {
 
-        return await Post.create({ ...input, creatorId: req.session.userId }).save()
+        return await Post.create({ ...input, creatorId: payload.sub }).save()
     }
 
     @Mutation(() => Post, { nullable: true })
@@ -156,12 +156,12 @@ export class PostResolver {
         @Arg("id", () => Int) id: number,
         @Arg("title") title: string,
         @Arg("text") text: string,
-        @Ctx() { req }: MyContext
+        @Ctx() { payload }: MyContext
     ): Promise<Post | null> {
 
         const result = await Post.update({
             id,
-            creatorId: req.session.userId
+            creatorId: payload.sub
         }, { title, text })
         if (result.affected) {
             const post = await Post.findOneBy({id})
@@ -177,7 +177,7 @@ export class PostResolver {
     @UseMiddleware(isAuth)
     async deletePost(
         @Arg("id", () => Int) id: number,
-        @Ctx() { req }: MyContext
+        @Ctx() { payload }: MyContext
     ): Promise<boolean> {
         //not casecade way
         // const post = await Post.findOne(id)
@@ -191,7 +191,7 @@ export class PostResolver {
         // await Post.delete({id,creatorId:req.session.userId})
         // return true;
 
-        await Post.delete({ id, creatorId: req.session.userId })
+        await Post.delete({ id, creatorId: payload.sub  })
         return true;
     }
 }

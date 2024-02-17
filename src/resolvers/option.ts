@@ -40,7 +40,7 @@ export class OptionResolver {
         }
         
         csub.group = optionGroup
-        console.log(csub)
+        // console.log(csub)
         return await Manager.save(csub);
     }
 

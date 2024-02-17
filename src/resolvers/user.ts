@@ -9,6 +9,7 @@ import { validateRegister } from "../utils/validateRegister";
 import { v4 } from 'uuid'
 import { FOGET_PASSWORD_PREFIX } from "../constants";
 import { isAuth } from "../middleware/isAuth";
+import { decodeToken, generateToken, removeTokenFromBlacklist } from "../utils/jwt";
 
 
 
@@ -28,13 +29,19 @@ class UserResponse {
 
     @Field(() => User, { nullable: true })
     user?: User;
+
+    @Field()
+    token?:String 
 }
+
+
+
 
 @Resolver(User)
 export class UserResolver {
     @FieldResolver(() => String)
-    email(@Root() user: User, @Ctx() { req }: MyContext) {
-        if (req.session.userId === user.id) {//this is the current user and its ok to show them their own email
+    email(@Root() user: User, @Ctx() { payload }: MyContext) {
+        if (payload.sub === user.id) {//this is the current user and its ok to show them their own email
             return user.email;
         }
         // current user wants to see someone else email
@@ -45,7 +52,7 @@ export class UserResolver {
     async resetPassword(
         @Arg('oldPassword') oldPassword: string,
         @Arg('newPassword') newPassword: string,
-        @Ctx() {  req }: MyContext
+        @Ctx() {  payload }: MyContext
     ): Promise<UserResponse> {
         if(oldPassword==newPassword){
             return {
@@ -64,7 +71,7 @@ export class UserResolver {
             }
         }
 
-        const userId = req.session.userId
+        const userId = payload.sub
         if (!userId) {
             return {
                 errors: [{
@@ -106,7 +113,7 @@ export class UserResolver {
     async changePassword(
         @Arg('token') token: string,
         @Arg('newpassword') newpassword: string,
-        @Ctx() { redis, req }: MyContext
+        @Ctx() { redis }: MyContext
     ): Promise<UserResponse> {
         if (newpassword.length <= 3) {
             return {
@@ -140,9 +147,10 @@ export class UserResolver {
         User.update({ id: userIdNum }, { password: await argon2.hash(newpassword) })
 
         await redis.del(key)
-        console.log(user.id)
-        req.session.userId = user.id
-        console.log(req.session.userId)
+        //最好刷新jwt，并且将旧的token加入黑名单
+        // console.log(user.id)
+        // req.session.userId = user.id
+        // console.log(req.session.userId)
         return { user }
     }
 
@@ -171,19 +179,19 @@ export class UserResolver {
 
     @Query(() => User, { nullable: true })
     async me(
-        @Ctx() { req }: MyContext
+        @Ctx() { payload }: MyContext
     ) {
-        if (!req.session.userId) {
+        if (!payload) {
             return null
         }
-        return await User.findOneBy({id:req.session.userId})
+        return await User.findOneBy({id:payload.sub})
     }
 
     @UseMiddleware(isAuth) //禁止前台注册
     @Mutation(() => UserResponse)
     async register(
         @Arg('options') options: UsernamePasswordInput,
-        @Ctx() { req }: MyContext
+        @Ctx() {  }: MyContext
     ): Promise<UserResponse> {
         const errors = validateRegister(options)
         if (errors) {
@@ -197,12 +205,13 @@ export class UserResolver {
                 email: options.email,
                 password: hashedPassword
             }).save()
+            //注册的时候可以生成jwt。无需再次登录
             // const user = new User();
             // user.username = options.username;
             // user.email = options.email;
             // user.password = hashedPassword;
             // await user.save();
-            req.session.userId = user.id;
+            // req.session.userId = user.id;
             return { user };
         } catch (error) {
             let message = "error.code:" + error.code
@@ -229,7 +238,7 @@ export class UserResolver {
     async login(
         @Arg('usernameOrEmail') usernameOrEmail: string,
         @Arg('password') password: string,
-        @Ctx() { req }: MyContext
+        @Ctx() {  }: MyContext
     ): Promise<UserResponse> {
         const user = await User.findOne({
             where: usernameOrEmail.includes('@') ?
@@ -256,26 +265,61 @@ export class UserResolver {
         }
 
         // stoe userId
-        req.session.userId = user.id;
-
-        return { user };
+        // req.session.userId = user.id;
+        const token = generateToken({sub:user.id,name:user.username,iat: Math.floor(Date.now() / 1000)});
+        return { user ,token};
     }
 
     @Mutation(() => Boolean)
-    logout(
+    async logout(
         @Ctx() { req, res }: MyContext
     ) {
 
-        return new Promise(resolve => req.session.destroy((err: any) => {
-            res.clearCookie("qid")
-            if (err) {
-                console.log(err)
-                resolve(false)
-                return
-            }
-            resolve(true)
+        // return new Promise(resolve => req.session.destroy((err: any) => {
+        //     res.clearCookie("qid")
+        //     if (err) {
+        //         console.log(err)
+        //         resolve(false)
+        //         return
+        //     }
+        //     resolve(true)
 
-        }))
+        // }))
+        return new Promise(resolve => {
+            if(req.headers.authorization) {
+                const token = req.headers.authorization.split(' ')[1]; // 提取 token
+                removeTokenFromBlacklist(token); // 删除或撤销 token
+             }
+            res.clearCookie('token'); // 清除 cookie 中的 token
+            resolve(true)
+        })
+       
+    }
+
+   
+
+    /*
+        refreshToken 什么时候需要刷新token？手动刷新
+        也可以在中间件中使用
+        签证快过期的时候。客户端验证时间，快结束时使用
+    */
+    @Mutation(() => UserResponse)
+    @UseMiddleware(isAuth)
+    refreshToken(
+        // @Arg('oldToken') oldToken: string,
+        @Ctx() {token }: MyContext
+    ) {
+        let oldToken = token || ""
+        try {
+            const payload = decodeToken(oldToken); // 验证当前 token
+            const newToken = generateToken(payload); // 生成新的 token
+            return { token: newToken,errors: [{
+                field: "token",
+                message: "Token refreshed successfully."
+            }] };
+          } catch (error) {
+            throw new Error('Invalid token.');
+          }
     }
 
 }

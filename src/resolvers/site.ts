@@ -102,10 +102,10 @@ export class SiteResolver {
         
         const count = await Site.createQueryBuilder("s").getCount()
         const site = await Site.findOneBy({id})
-        console.log(count,site)
+        // console.log(count,site)
         if(site&&count>1){//只有不是默认网站且站点数量大于1的时候才可以修改
             //Site.createQueryBuilder().update
-            console.log(count,site.isDefault)
+            // console.log(count,site.isDefault)
             await Site.update({id:Not(id)},{ isDefault:false})
             //await AppDataSource.createQueryBuilder().update(Site).set({isDefault:false}).execute();
             await Site.update({id},{isDefault:true})

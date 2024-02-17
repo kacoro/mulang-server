@@ -30,7 +30,7 @@ export class ModuleResolver {
         csub.type = type;
         csub.isSeo = isSeo;
         const data =  await Manager.save(csub);
-        console.log(data)
+        // console.log(data)
         //创建时，创建新表
        
         await Manager.query(`CREATE TABLE IF NOT EXISTS ${data.table}_${data.id}(

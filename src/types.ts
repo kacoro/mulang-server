@@ -6,9 +6,12 @@ import {Redis} from 'ioredis';
 // import { createModuleLoader } from './utils/DataLoader/createModuleLoader';
 import loaders from './utils/entitieLoaders'
 export type MyContext = {
-   
+    payload: any;
     req: Request & { session: {
         userId?:number
+        headers?:any &{
+            authorization:string
+        }
     } }
     res: Response,
     redis:Redis;
@@ -19,6 +22,6 @@ export type MyContext = {
     //     FieldLoader:ReturnType<typeof createFieldLoader>
     // }
     loaders:typeof loaders,
-    token?: String;
+    token: string;
 }
 

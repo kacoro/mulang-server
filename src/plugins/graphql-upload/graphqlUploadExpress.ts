@@ -32,7 +32,7 @@ export const  graphqlUploadExpress = ( {processRequest = defaultProcessRequest,
 
       processRequest(request, response, processRequestOptions)
       .then((body: any) => {
-        console.log(body)
+        // console.log(body)
         request.body = body;
         next();
       })

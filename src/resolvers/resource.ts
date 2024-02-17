@@ -102,9 +102,9 @@ export class ResourceResolver {
     @UseMiddleware(isAuth)
     async createResource(
         @Arg("input") input: ResourceInput,
-        @Ctx() { req }: MyContext
+        @Ctx() { payload }: MyContext
     ): Promise<Resource> {
-        return await Resource.create({ ...input, creatorId: req.session.userId }).save()
+        return await Resource.create({ ...input, creatorId: payload.sub }).save()
     }
     
 
@@ -113,12 +113,12 @@ export class ResourceResolver {
     async updateResource(
         @Arg("id", () => Int) id: number,
         @Arg("title") title: string,
-        @Ctx() { req }: MyContext
+        @Ctx() { payload }: MyContext
     ): Promise<Resource | null> {
 
         const result = await Resource.update({
             id,
-            creatorId: req.session.userId
+            creatorId: payload.sub
         }, { title })
         if (result.affected) {
             const post = await Resource.findOneBy({id})
@@ -154,7 +154,7 @@ export class ResourceResolver {
                 return false;
               }
         }
-        console.log(res)
+        // console.log(res)
         //删除服务器的文件
         // await Resource.delete({ id, creatorId: req.session.userId })
         
